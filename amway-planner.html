@@ -1,0 +1,2237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amway Business Planner 2024 - Professional Edition</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        /* Organization Chart Styles */
+        .org-container {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            overflow: auto;
+            min-height: 600px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .org-tree {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            min-width: 100%;
+        }
+        
+        .org-level {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 40px 0;
+            position: relative;
+            width: 100%;
+        }
+        
+        .org-node-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 20px;
+        }
+        
+        .org-node {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            z-index: 10;
+            transition: all 0.3s ease;
+            border: 4px solid white;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .org-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+        }
+        
+        .org-node.selected {
+            border-color: #fbbf24;
+            box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .org-node.vcs-non-compliant {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        
+        .org-node-controls {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            display: flex;
+            gap: 5px;
+            z-index: 20;
+        }
+        
+        .org-node-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            color: white;
+        }
+        
+        .org-node-btn.add {
+            background: #10b981;
+        }
+        
+        .org-node-btn.delete {
+            background: #ef4444;
+        }
+        
+        .org-node-btn:hover {
+            transform: scale(1.15);
+        }
+        
+        .org-children {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        /* Connection Lines */
+        .connection-line {
+            position: absolute;
+            background: #94a3b8;
+            z-index: 1;
+        }
+        
+        .vertical-line {
+            width: 3px;
+            height: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 140px;
+        }
+        
+        .horizontal-line {
+            height: 3px;
+            top: 180px;
+        }
+        
+        /* Tab Styles */
+        .tab-btn {
+            position: relative;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .tab-btn.active {
+            color: #4f46e5;
+        }
+        
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #4f46e5;
+            border-radius: 3px 3px 0 0;
+        }
+        
+        /* Income Cards */
+        .income-card {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .income-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        /* Zoom Controls */
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            border: none;
+            background: #4f46e5;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .zoom-btn:hover {
+            background: #4338ca;
+            transform: scale(1.05);
+        }
+        
+        /* Scrollbar Styles */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        /* Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .org-node {
+                width: 100px;
+                height: 100px;
+                font-size: 10px;
+            }
+            
+            .org-node-wrapper {
+                margin: 0 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="min-h-screen p-4 md:p-6"></div>
+
+    <script>
+        // ============================================
+        // AMWAY BUSINESS PLANNER - MAIN APPLICATION
+        // ============================================
+        
+        class AmwayBusinessPlanner {
+            constructor() {
+                // Application State
+                this.state = {
+                    organization: new Map(),
+                    monthlyData: new Map(),
+                    selectedNode: null,
+                    currentMonth: new Date().toISOString().slice(0, 7),
+                    currentTab: 'visual',
+                    zoomLevel: 1,
+                    timelineStartIndex: 0,
+                    timelineRange: 8
+                };
+                
+                // Configuration
+                this.config = {
+                    pvToBvRatio: 3.43,
+                    performanceSchedule: [
+                        { min: 7500, max: Infinity, rate: 25, label: 'Platinum+' },
+                        { min: 6000, max: 7499, rate: 23, label: 'High Platinum' },
+                        { min: 4000, max: 5999, rate: 21, label: 'Platinum Track' },
+                        { min: 2500, max: 3999, rate: 18, label: 'Gold Producer' },
+                        { min: 1500, max: 2499, rate: 15, label: 'Silver Producer' },
+                        { min: 1000, max: 1499, rate: 12, label: 'Developing' },
+                        { min: 600, max: 999, rate: 9, label: 'Building' },
+                        { min: 300, max: 599, rate: 6, label: 'Growing' },
+                        { min: 100, max: 299, rate: 3, label: 'Start' },
+                        { min: 0, max: 99, rate: 0, label: 'New' }
+                    ]
+                };
+                
+                this.init();
+            }
+            
+            // ============================================
+            // INITIALIZATION
+            // ============================================
+            
+            init() {
+                // Initialize root node
+                this.state.organization.set('root', {
+                    id: 'root',
+                    name: 'You',
+                    pv: 150,
+                    bv: 150 * this.config.pvToBvRatio,
+                    customerSalesPV: 105, // 70% of 150
+                    vcsPV: 90, // 60% of 150
+                    vcsCompliant: true,
+                    children: [],
+                    parent: null,
+                    level: 0,
+                    registrationDate: new Date().toISOString()
+                });
+                
+                this.loadSavedData();
+                this.render();
+                this.attachGlobalEventListeners();
+            }
+            
+            // ============================================
+            // RENDERING
+            // ============================================
+            
+            render() {
+                const app = document.getElementById('app');
+                app.innerHTML = `
+                    <div class="max-w-7xl mx-auto">
+                        <!-- Header -->
+                        <header class="bg-white rounded-lg shadow-lg p-6 mb-6 fade-in">
+                            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div>
+                                    <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                                        <i class="fas fa-chart-network mr-3 text-indigo-600"></i>
+                                        Amway Business Planner 2024
+                                    </h1>
+                                    <p class="text-gray-600">Professional Edition - Complete Business Modeling & Analytics</p>
+                                </div>
+                                <div class="flex gap-2 no-print">
+                                    <button onclick="app.exportManager.exportToPDF()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                                    </button>
+                                    <button onclick="app.exportManager.exportToImage()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                        <i class="fas fa-image mr-2"></i>Export Image
+                                    </button>
+                                    <button onclick="app.saveData()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                        <i class="fas fa-save mr-2"></i>Save
+                                    </button>
+                                </div>
+                            </div>
+                        </header>
+                        
+                        <!-- Main Content -->
+                        <div class="bg-white rounded-lg shadow-lg p-6 fade-in">
+                            <!-- Tabs -->
+                            <nav class="border-b border-gray-200 mb-6">
+                                <div class="flex space-x-8">
+                                    <button class="tab-btn active" data-tab="visual" onclick="app.switchTab('visual')">
+                                        <i class="fas fa-sitemap mr-2"></i>Visual Builder
+                                    </button>
+                                    <button class="tab-btn" data-tab="multimonth" onclick="app.switchTab('multimonth')">
+                                        <i class="fas fa-calendar-alt mr-2"></i>Multi-Month Planning
+                                    </button>
+                                    <button class="tab-btn" data-tab="analytics" onclick="app.switchTab('analytics')">
+                                        <i class="fas fa-chart-line mr-2"></i>Analytics
+                                    </button>
+                                    <button class="tab-btn" data-tab="incentives" onclick="app.switchTab('incentives')">
+                                        <i class="fas fa-trophy mr-2"></i>Incentives
+                                    </button>
+                                </div>
+                            </nav>
+                            
+                            <!-- Tab Content -->
+                            <div id="tab-content"></div>
+                        </div>
+                        
+                        <!-- Disclaimers -->
+                        <div class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 mt-6 fade-in">
+                            <h3 class="text-lg font-bold text-yellow-800 mb-3">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>Important Disclaimers
+                            </h3>
+                            <div class="text-sm text-yellow-700 space-y-2">
+                                <p><strong>Income Disclosure:</strong> For the calendar year 2023, the average income from Amway for all U.S. registered IBOs at the Founders Platinum level and below was $841 before expenses.</p>
+                                <p><strong>Results Vary:</strong> Earnings depend on many factors, including customer base, business experience, effort, dedication, and quality and performance of the downline sales team.</p>
+                                <p><strong>Baseline Requirements:</strong> IBOs must meet baseline requirements including average 150 Personal PV monthly, at least 60% from Verified Customer Sales, and adherence to Rules of Conduct.</p>
+                                <p><strong>Calculator Notice:</strong> This calculator provides estimates based on 2024 compensation plan data and should be used for planning purposes only.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                this.renderTabContent();
+            }
+            
+            renderTabContent() {
+                const content = document.getElementById('tab-content');
+                
+                switch(this.state.currentTab) {
+                    case 'visual':
+                        content.innerHTML = this.renderVisualBuilder();
+                        this.renderOrganizationChart();
+                        this.attachVisualBuilderEvents();
+                        break;
+                    case 'multimonth':
+                        content.innerHTML = this.renderMultiMonth();
+                        this.attachMultiMonthEvents();
+                        break;
+                    case 'analytics':
+                        content.innerHTML = this.renderAnalytics();
+                        setTimeout(() => this.initializeCharts(), 100);
+                        break;
+                    case 'incentives':
+                        content.innerHTML = this.renderIncentives();
+                        break;
+                }
+            }
+            
+            // ============================================
+            // VISUAL BUILDER TAB
+            // ============================================
+            
+            renderVisualBuilder() {
+                return `
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Organization Chart -->
+                        <div class="lg:col-span-2">
+                            <div class="mb-4 flex justify-between items-center">
+                                <h3 class="text-xl font-bold text-gray-800">Organization Structure</h3>
+                                <div class="flex items-center gap-2">
+                                    <select id="month-selector" class="px-3 py-2 border rounded-lg text-sm">
+                                        <option value="${this.state.currentMonth}">${this.formatMonth(this.state.currentMonth)}</option>
+                                    </select>
+                                    <button onclick="app.pushToMultiMonth()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm">
+                                        <i class="fas fa-calendar-plus mr-2"></i>Push to Multi-Month
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="org-container relative">
+                                <div class="zoom-controls no-print">
+                                    <button class="zoom-btn" onclick="app.zoomIn()" title="Zoom In">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button class="zoom-btn" onclick="app.zoomOut()" title="Zoom Out">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <button class="zoom-btn" onclick="app.autoFit()" title="Auto Fit">
+                                        <i class="fas fa-expand-arrows-alt"></i>
+                                    </button>
+                                </div>
+                                <div id="org-chart" class="org-tree" style="transform: scale(${this.state.zoomLevel}); transform-origin: top center;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Member Details & Income Panel -->
+                        <div class="space-y-6">
+                            <!-- Member Details -->
+                            <div class="bg-gray-50 rounded-lg p-6">
+                                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                                    <i class="fas fa-user-edit mr-2"></i>Member Details
+                                </h3>
+                                <form id="member-form" class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                        <input type="text" id="member-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Enter name">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Monthly PV</label>
+                                        <input type="number" id="member-pv" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="10">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Monthly BV (Auto-calculated)</label>
+                                        <input type="number" id="member-bv" class="w-full px-3 py-2 border rounded-lg bg-gray-100" readonly>
+                                        <p class="text-xs text-gray-500 mt-1">BV = PV × 3.43</p>
+                                    </div>
+                                    
+                                    <div class="border-t pt-4">
+                                        <h4 class="font-semibold mb-3">VCS Compliance</h4>
+                                        <div class="space-y-2">
+                                            <div>
+                                                <label class="block text-xs text-gray-600 mb-1">Customer Sales PV (70% required)</label>
+                                                <input type="number" id="customer-sales-pv" class="w-full px-3 py-2 border rounded-lg text-sm" min="0">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs text-gray-600 mb-1">Verified Customer Sales PV (60% required)</label>
+                                                <input type="number" id="vcs-pv" class="w-full px-3 py-2 border rounded-lg text-sm" min="0">
+                                            </div>
+                                            <div id="vcs-status" class="text-xs"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex gap-2">
+                                        <button type="button" onclick="app.saveMember()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                            <i class="fas fa-save mr-2"></i>Save
+                                        </button>
+                                        <button type="button" onclick="app.addDownline()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        <button type="button" onclick="app.deleteMember(false)" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors" title="Delete (move children up)">
+                                            <i class="fas fa-user-minus"></i>
+                                        </button>
+                                        <button type="button" onclick="app.deleteMember(true)" class="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors" title="Delete with entire group">
+                                            <i class="fas fa-users-slash"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Income Summary -->
+                            <div class="income-card">
+                                <h3 class="text-xl font-bold mb-4">
+                                    <i class="fas fa-dollar-sign mr-2"></i>Monthly Income
+                                </h3>
+                                <div id="income-summary" class="space-y-2 text-sm"></div>
+                                <div class="mt-4 pt-4 border-t border-white border-opacity-30">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-lg font-bold">Total:</span>
+                                        <span id="total-income" class="text-2xl font-bold"></span>
+                                    </div>
+                                </div>
+                                <button onclick="app.toggleIncomeDetails()" class="mt-4 w-full bg-white bg-opacity-20 hover:bg-opacity-30 py-2 rounded-lg transition-colors text-sm">
+                                    <i class="fas fa-chevron-down mr-2"></i>View Detailed Breakdown
+                                </button>
+                            </div>
+                            
+                            <!-- Team Stats -->
+                            <div class="bg-gray-50 rounded-lg p-6">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4">Team Statistics</h3>
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div class="text-center">
+                                        <div id="total-members" class="text-2xl font-bold text-indigo-600">0</div>
+                                        <div class="text-gray-600">Team Members</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div id="total-pv" class="text-2xl font-bold text-green-600">0</div>
+                                        <div class="text-gray-600">Total PV</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div id="vcs-compliant" class="text-2xl font-bold text-blue-600">0</div>
+                                        <div class="text-gray-600">VCS Compliant</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div id="performance-level" class="text-2xl font-bold text-purple-600">0%</div>
+                                        <div class="text-gray-600">Performance Level</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Income Details Modal -->
+                    <div id="income-details-modal" class="modal">
+                        <div class="modal-content">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-2xl font-bold text-gray-800">Detailed Income Breakdown</h3>
+                                <button onclick="app.toggleIncomeDetails()" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times text-2xl"></i>
+                                </button>
+                            </div>
+                            <div id="income-details-content"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            renderOrganizationChart() {
+                const container = document.getElementById('org-chart');
+                if (!container) return;
+                
+                container.innerHTML = '';
+                
+                // Organize nodes by level
+                const levels = this.organizeByLevels();
+                
+                levels.forEach((levelNodes, level) => {
+                    const levelDiv = document.createElement('div');
+                    levelDiv.className = 'org-level';
+                    levelDiv.dataset.level = level;
+                    
+                    levelNodes.forEach(node => {
+                        const nodeWrapper = this.createNodeElement(node);
+                        levelDiv.appendChild(nodeWrapper);
+                    });
+                    
+                    container.appendChild(levelDiv);
+                });
+                
+                this.updateIncomeSummary();
+                this.updateTeamStats();
+            }
+            
+            createNodeElement(node) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'org-node-wrapper';
+                wrapper.dataset.nodeId = node.id;
+                
+                const vcsStatus = this.checkVCSCompliance(node);
+                const performanceLevel = this.getPerformanceLevel(node.pv);
+                
+                const nodeDiv = document.createElement('div');
+                nodeDiv.className = `org-node ${this.state.selectedNode === node.id ? 'selected' : ''} ${!vcsStatus.compliant ? 'vcs-non-compliant' : ''}`;
+                nodeDiv.innerHTML = `
+                    <div class="text-xs font-bold mb-1">${node.name}</div>
+                    <div class="text-lg font-bold">${performanceLevel}%</div>
+                    <div class="text-xs mt-1">${node.pv} PV</div>
+                    <div class="text-xs">${Math.round(node.bv)} BV</div>
+                    <div class="text-xs mt-1">${vcsStatus.compliant ? '✓' : '⚠'} VCS</div>
+                `;
+                
+                nodeDiv.onclick = () => this.selectNode(node.id);
+                wrapper.appendChild(nodeDiv);
+                
+                // Add controls
+                if (node.id !== 'root') {
+                    const controls = document.createElement('div');
+                    controls.className = 'org-node-controls';
+                    controls.innerHTML = `
+                        <div class="org-node-btn delete" onclick="event.stopPropagation(); app.deleteMember(true, '${node.id}')">
+                            <i class="fas fa-times"></i>
+                        </div>
+                    `;
+                    wrapper.appendChild(controls);
+                }
+                
+                const addBtn = document.createElement('div');
+                addBtn.className = 'org-node-btn add';
+                addBtn.style.position = 'absolute';
+                addBtn.style.bottom = '-10px';
+                addBtn.style.right = '-10px';
+                addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+                addBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.addDownlineToNode(node.id);
+                };
+                wrapper.appendChild(addBtn);
+                
+                // Connection line
+                if (node.parent) {
+                    const line = document.createElement('div');
+                    line.className = 'connection-line vertical-line';
+                    wrapper.appendChild(line);
+                }
+                
+                // Render children
+                if (node.children && node.children.length > 0) {
+                    const childrenContainer = document.createElement('div');
+                    childrenContainer.className = 'org-children';
+                    
+                    node.children.forEach(childId => {
+                        const child = this.state.organization.get(childId);
+                        if (child) {
+                            const childElement = this.createNodeElement(child);
+                            childrenContainer.appendChild(childElement);
+                        }
+                    });
+                    
+                    wrapper.appendChild(childrenContainer);
+                    
+                    // Horizontal connection line for multiple children
+                    if (node.children.length > 1) {
+                        const hLine = document.createElement('div');
+                        hLine.className = 'connection-line horizontal-line';
+                        const firstChild = wrapper.querySelector('.org-children > .org-node-wrapper:first-child');
+                        const lastChild = wrapper.querySelector('.org-children > .org-node-wrapper:last-child');
+                        if (firstChild && lastChild) {
+                            const firstRect = firstChild.getBoundingClientRect();
+                            const lastRect = lastChild.getBoundingClientRect();
+                            const wrapperRect = wrapper.getBoundingClientRect();
+                            hLine.style.left = (firstRect.left - wrapperRect.left + 70) + 'px';
+                            hLine.style.width = (lastRect.left - firstRect.left) + 'px';
+                        }
+                        wrapper.appendChild(hLine);
+                    }
+                }
+                
+                return wrapper;
+            }
+            
+            organizeByLevels() {
+                const levels = new Map();
+                
+                const traverse = (nodeId, level) => {
+                    const node = this.state.organization.get(nodeId);
+                    if (!node) return;
+                    
+                    if (!levels.has(level)) {
+                        levels.set(level, []);
+                    }
+                    levels.get(level).push(node);
+                    
+                    if (node.children) {
+                        node.children.forEach(childId => {
+                            traverse(childId, level + 1);
+                        });
+                    }
+                };
+                
+                traverse('root', 0);
+                return levels;
+            }
+            
+            // ============================================
+            // MULTI-MONTH PLANNING TAB
+            // ============================================
+            
+            renderMultiMonth() {
+                const monthsWithData = Array.from(this.state.monthlyData.entries())
+                    .sort((a, b) => new Date(a[0]) - new Date(b[0]));
+                
+                const totalPeriodIncome = monthsWithData.reduce((sum, [_, data]) => sum + data.income.total, 0);
+                const avgMonthlyIncome = monthsWithData.length > 0 ? totalPeriodIncome / monthsWithData.length : 0;
+                
+                const periodLabel = monthsWithData.length >= 12 
+                    ? 'Yearly Income' 
+                    : `Total Projected Income for ${monthsWithData.length} month${monthsWithData.length !== 1 ? 's' : ''}`;
+                
+                return `
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6">Multi-Month Business Planning</h3>
+                        
+                        ${monthsWithData.length > 0 ? `
+                            <!-- Period Summary -->
+                            <div class="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg p-8 mb-6 text-center">
+                                <div class="text-lg opacity-90 mb-2">${periodLabel}</div>
+                                <div class="text-5xl font-bold mb-3">$${totalPeriodIncome.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                <div class="text-sm opacity-80">Average Monthly: $${avgMonthlyIncome.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            </div>
+                            
+                            <!-- Timeline Overview -->
+                            <div class="bg-white border rounded-lg p-4 mb-6">
+                                <h4 class="font-semibold mb-3">Timeline Overview</h4>
+                                <div class="flex overflow-x-auto space-x-2 pb-2">
+                                    ${monthsWithData.map(([month, data]) => `
+                                        <div class="flex-shrink-0 bg-blue-100 rounded-lg px-4 py-3 text-sm border-2 border-blue-300">
+                                            <div class="font-semibold text-blue-800">${this.formatMonthShort(month)}</div>
+                                            <div class="text-xs text-gray-600 mt-1">${Math.round(data.income.totalPV)} PV</div>
+                                            <div class="text-xs font-semibold text-green-600">$${data.income.total.toFixed(0)}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <!-- Monthly Details -->
+                            <div class="space-y-6">
+                                ${monthsWithData.map(([month, data]) => `
+                                    <div class="border-2 border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
+                                        <div class="flex justify-between items-center mb-4">
+                                            <h4 class="text-xl font-bold text-blue-600">${this.formatMonth(month)}</h4>
+                                            <div class="text-right">
+                                                <div class="text-sm text-gray-600">Total PV: ${Math.round(data.income.totalPV)}</div>
+                                                <div class="text-lg font-bold text-green-600">$${data.income.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Mini Organization Chart -->
+                                        <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                                            <h5 class="font-semibold mb-3 text-sm text-gray-700">Organization Structure</h5>
+                                            <div class="space-y-2">
+                                                ${this.renderMiniOrgChart(data.organization)}
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Income Breakdown -->
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            <div class="bg-blue-50 rounded-lg p-3 text-center">
+                                                <div class="text-xs text-gray-600 mb-1">Performance</div>
+                                                <div class="font-bold text-blue-600">$${data.income.performanceBonus.toFixed(0)}</div>
+                                            </div>
+                                            <div class="bg-green-50 rounded-lg p-3 text-center">
+                                                <div class="text-xs text-gray-600 mb-1">Differential</div>
+                                                <div class="font-bold text-green-600">$${data.income.differentialBonus.toFixed(0)}</div>
+                                            </div>
+                                            <div class="bg-purple-50 rounded-lg p-3 text-center">
+                                                <div class="text-xs text-gray-600 mb-1">Retail</div>
+                                                <div class="font-bold text-purple-600">$${data.income.retailMargin.toFixed(0)}</div>
+                                            </div>
+                                            <div class="bg-orange-50 rounded-lg p-3 text-center">
+                                                <div class="text-xs text-gray-600 mb-1">Customer Sales</div>
+                                                <div class="font-bold text-orange-600">$${data.income.customerSalesIncentive.toFixed(0)}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <div class="text-center py-16">
+                                <i class="fas fa-calendar-plus text-6xl text-gray-300 mb-4"></i>
+                                <p class="text-gray-500 text-lg mb-2">No monthly data yet</p>
+                                <p class="text-gray-400 text-sm">Push your current business structure from the Visual Builder tab</p>
+                            </div>
+                        `}
+                    </div>
+                `;
+            }
+            
+            renderMiniOrgChart(organization) {
+                const root = organization.get('root');
+                if (!root) return '<p class="text-gray-400 text-sm">No data</p>';
+                
+                const renderNode = (node, level = 0) => {
+                    const indent = level * 20;
+                    const vcsStatus = this.checkVCSCompliance(node);
+                    const performanceLevel = this.getPerformanceLevel(node.pv);
+                    
+                    let html = `
+                        <div class="flex items-center" style="margin-left: ${indent}px">
+                            <div class="flex items-center space-x-2 bg-white rounded-full px-3 py-2 shadow-sm border ${vcsStatus.compliant ? 'border-green-200' : 'border-red-200'}">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                                    ${performanceLevel}%
+                                </div>
+                                <div>
+                                    <div class="text-xs font-medium">${node.name}</div>
+                                    <div class="text-xs text-gray-500">${node.pv} PV</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    if (node.children && node.children.length > 0) {
+                        node.children.forEach(childId => {
+                            const child = organization.get(childId);
+                            if (child) {
+                                html += renderNode(child, level + 1);
+                            }
+                        });
+                    }
+                    
+                    return html;
+                };
+                
+                return renderNode(root);
+            }
+            
+            // ============================================
+            // ANALYTICS TAB
+            // ============================================
+            
+            renderAnalytics() {
+                return `
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6">Performance Analytics</h3>
+                        
+                        ${this.state.monthlyData.size > 0 ? `
+                            <!-- Timeline Controls -->
+                            <div class="bg-white border rounded-lg p-4 mb-6">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="font-semibold">Timeline View</h4>
+                                    <div class="flex items-center space-x-4">
+                                        <button onclick="app.scrollTimeline('left')" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors" ${this.state.timelineStartIndex === 0 ? 'disabled' : ''}>
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                        <span class="text-sm text-gray-600">
+                                            ${this.getVisibleMonthsLabel()}
+                                        </span>
+                                        <button onclick="app.scrollTimeline('right')" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                        <select id="timeline-range" onchange="app.updateTimelineRange(this.value)" class="px-3 py-2 border rounded">
+                                            <option value="6">6 Months</option>
+                                            <option value="8" selected>8 Months</option>
+                                            <option value="12">12 Months</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Charts -->
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div class="bg-white border rounded-lg p-6">
+                                    <h4 class="font-semibold mb-4">Performance Timeline</h4>
+                                    <canvas id="performance-chart" style="height: 300px;"></canvas>
+                                </div>
+                                <div class="bg-white border rounded-lg p-6">
+                                    <h4 class="font-semibold mb-4">Income Distribution</h4>
+                                    <canvas id="income-distribution-chart" style="height: 300px;"></canvas>
+                                </div>
+                                <div class="bg-white border rounded-lg p-6">
+                                    <h4 class="font-semibold mb-4">Team Growth</h4>
+                                    <canvas id="team-growth-chart" style="height: 300px;"></canvas>
+                                </div>
+                                <div class="bg-white border rounded-lg p-6">
+                                    <h4 class="font-semibold mb-4">VCS Compliance Rate</h4>
+                                    <canvas id="vcs-compliance-chart" style="height: 300px;"></canvas>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="text-center py-16">
+                                <i class="fas fa-chart-line text-6xl text-gray-300 mb-4"></i>
+                                <p class="text-gray-500 text-lg mb-2">No analytics data yet</p>
+                                <p class="text-gray-400 text-sm">Add monthly data to see performance analytics</p>
+                            </div>
+                        `}
+                    </div>
+                `;
+            }
+            
+            initializeCharts() {
+                if (this.state.monthlyData.size === 0) return;
+                
+                const visibleMonths = this.getVisibleMonths();
+                const monthLabels = visibleMonths.map(m => this.formatMonthShort(m));
+                
+                // Performance Timeline Chart
+                const perfCtx = document.getElementById('performance-chart');
+                if (perfCtx) {
+                    const incomeData = visibleMonths.map(month => {
+                        const data = this.state.monthlyData.get(month);
+                        return data ? data.income.total : 0;
+                    });
+                    
+                    const pvData = visibleMonths.map(month => {
+                        const data = this.state.monthlyData.get(month);
+                        return data ? data.income.totalPV : 0;
+                    });
+                    
+                    new Chart(perfCtx, {
+                        type: 'line',
+                        data: {
+                            labels: monthLabels,
+                            datasets: [
+                                {
+                                    label: 'Monthly Income ($)',
+                                    data: incomeData,
+                                    borderColor: '#10b981',
+                                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                    yAxisID: 'y',
+                                    tension: 0.4,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Group PV',
+                                    data: pvData,
+                                    borderColor: '#3b82f6',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    yAxisID: 'y1',
+                                    tension: 0.4,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            scales: {
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    title: { display: true, text: 'Income ($)' }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    title: { display: true, text: 'PV' },
+                                    grid: { drawOnChartArea: false }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Income Distribution Chart
+                const incomeDistCtx = document.getElementById('income-distribution-chart');
+                if (incomeDistCtx && visibleMonths.length > 0) {
+                    const latestMonth = visibleMonths[visibleMonths.length - 1];
+                    const latestData = this.state.monthlyData.get(latestMonth);
+                    
+                    if (latestData) {
+                        new Chart(incomeDistCtx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Performance Bonus', 'Differential Bonus', 'Retail Margin', 'Customer Sales'],
+                                datasets: [{
+                                    data: [
+                                        latestData.income.performanceBonus,
+                                        latestData.income.differentialBonus,
+                                        latestData.income.retailMargin,
+                                        latestData.income.customerSalesIncentive
+                                    ],
+                                    backgroundColor: [
+                                        'rgba(59, 130, 246, 0.8)',
+                                        'rgba(16, 185, 129, 0.8)',
+                                        'rgba(168, 85, 247, 0.8)',
+                                        'rgba(245, 158, 11, 0.8)'
+                                    ]
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { position: 'bottom' }
+                                }
+                            }
+                        });
+                    }
+                }
+                
+                // Team Growth Chart
+                const teamCtx = document.getElementById('team-growth-chart');
+                if (teamCtx) {
+                    const teamData = visibleMonths.map(month => {
+                        const data = this.state.monthlyData.get(month);
+                        return data ? data.organization.size - 1 : 0;
+                    });
+                    
+                    new Chart(teamCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: monthLabels,
+                            datasets: [{
+                                label: 'Team Members',
+                                data: teamData,
+                                backgroundColor: 'rgba(168, 85, 247, 0.8)',
+                                borderColor: 'rgba(168, 85, 247, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true }
+                            }
+                        }
+                    });
+                }
+                
+                // VCS Compliance Chart
+                const vcsCtx = document.getElementById('vcs-compliance-chart');
+                if (vcsCtx) {
+                    const vcsData = visibleMonths.map(month => {
+                        const data = this.state.monthlyData.get(month);
+                        if (!data) return 0;
+                        
+                        let compliant = 0;
+                        data.organization.forEach(node => {
+                            if (this.checkVCSCompliance(node).compliant) compliant++;
+                        });
+                        
+                        return (compliant / data.organization.size) * 100;
+                    });
+                    
+                    new Chart(vcsCtx, {
+                        type: 'line',
+                        data: {
+                            labels: monthLabels,
+                            datasets: [{
+                                label: 'VCS Compliance Rate (%)',
+                                data: vcsData,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            
+            // ============================================
+            // INCENTIVES TAB
+            // ============================================
+            
+            renderIncentives() {
+                const incentives = this.calculateAllIncentives();
+                
+                return `
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6">Auto-Calculated Incentives & Bonuses</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${incentives.breakdown.map(incentive => `
+                                <div class="border-2 ${incentive.qualified ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50'} rounded-lg p-6">
+                                    <div class="flex justify-between items-start mb-3">
+                                        <h4 class="font-bold text-lg ${incentive.qualified ? 'text-green-700' : 'text-gray-500'}">${incentive.name}</h4>
+                                        <i class="fas fa-${incentive.qualified ? 'check-circle text-green-500' : 'times-circle text-gray-400'} text-xl"></i>
+                                    </div>
+                                    <div class="text-3xl font-bold ${incentive.qualified ? 'text-green-600' : 'text-gray-400'} mb-2">
+
+                                        $${incentive.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                    </div>
+                                    <p class="text-sm ${incentive.qualified ? 'text-green-600' : 'text-gray-500'}">${incentive.description}</p>
+                                    ${incentive.details ? `
+                                        <div class="mt-3 pt-3 border-t ${incentive.qualified ? 'border-green-200' : 'border-gray-200'}">
+                                            <div class="text-xs space-y-1">
+                                                ${Object.entries(incentive.details).map(([key, value]) => `
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-600">${this.formatKey(key)}:</span>
+                                                        <span class="font-medium">${value}</span>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <!-- Total Incentives Summary -->
+                        <div class="mt-8 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg p-8 text-center">
+                            <h4 class="text-xl font-semibold mb-3">Total Monthly Incentives</h4>
+                            <div class="text-5xl font-bold">$${incentives.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            <p class="text-sm opacity-90 mt-2">${incentives.breakdown.filter(i => i.qualified).length} of ${incentives.breakdown.length} incentives qualified</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // ============================================
+            // CALCULATION METHODS
+            // ============================================
+            
+            calculateIncome() {
+                let totalPV = 0;
+                let totalBV = 0;
+                let vcsCompliantBV = 0;
+                
+                this.state.organization.forEach(node => {
+                    totalPV += node.pv;
+                    const vcsStatus = this.checkVCSCompliance(node);
+                    const effectiveBV = vcsStatus.effectiveBV;
+                    totalBV += effectiveBV;
+                    if (vcsStatus.compliant) {
+                        vcsCompliantBV += node.bv;
+                    }
+                });
+                
+                const performanceRate = this.getPerformanceLevel(totalPV) / 100;
+                const performanceBonus = totalBV * performanceRate;
+                
+                // Calculate differential bonuses
+                let differentialBonus = 0;
+                const root = this.state.organization.get('root');
+                if (root && root.children) {
+                    root.children.forEach(childId => {
+                        const childPV = this.calculateGroupPV(childId);
+                        const childBV = this.calculateGroupBV(childId);
+                        const childRate = this.getPerformanceLevel(childPV) / 100;
+                        const differential = Math.max(0, performanceRate - childRate);
+                        differentialBonus += childBV * differential;
+                    });
+                }
+                
+                // Additional income streams
+                const retailMargin = totalPV * 2.84 * 0.1; // 10% retail margin
+                const customerSalesIncentive = Math.min(75, vcsCompliantBV * 0.1); // Up to $75/month
+                
+                return {
+                    performanceBonus,
+                    differentialBonus,
+                    retailMargin,
+                    customerSalesIncentive,
+                    total: performanceBonus + differentialBonus + retailMargin + customerSalesIncentive,
+                    totalPV,
+                    totalBV,
+                    vcsCompliantBV
+                };
+            }
+            
+            calculateAllIncentives() {
+                const income = this.calculateIncome();
+                const root = this.state.organization.get('root');
+                const incentives = [];
+                
+                // 1. Strong Start Incentive (SSI)
+                const ssi = this.calculateSSI(root);
+                if (ssi.amount > 0) incentives.push(ssi);
+                
+                // 2. Bronze Foundation Incentive (BFI)
+                const bfi = this.calculateBFI(income);
+                if (bfi.amount > 0) incentives.push(bfi);
+                
+                // 3. Bronze Builder Incentive (BBI)
+                const bbi = this.calculateBBI(income, root);
+                if (bbi.amount > 0) incentives.push(bbi);
+                
+                // 4. Ruby Bonus
+                const ruby = this.calculateRubyBonus(income);
+                if (ruby.amount > 0) incentives.push(ruby);
+                
+                // 5. Leadership Bonus
+                const leadership = this.calculateLeadershipBonus(income, root);
+                if (leadership.amount > 0) incentives.push(leadership);
+                
+                // 6. Depth Bonus
+                const depth = this.calculateDepthBonus(income, root);
+                if (depth.amount > 0) incentives.push(depth);
+                
+                // Add more incentives as needed...
+                
+                const total = incentives.reduce((sum, inc) => sum + inc.amount, 0);
+                
+                return { total, breakdown: incentives };
+            }
+            
+            calculateSSI(node) {
+                const registrationDate = new Date(node.registrationDate);
+                const monthsSinceRegistration = this.getMonthsSince(registrationDate);
+                
+                if (monthsSinceRegistration > 12) {
+                    return { name: 'Strong Start Incentive (SSI)', amount: 0, qualified: false, description: 'Expired (>12 months)' };
+                }
+                
+                let bonus = 0;
+                if (monthsSinceRegistration <= 3 && node.pv >= 150 && this.checkVCSCompliance(node).compliant) {
+                    bonus = 100;
+                }
+                
+                return {
+                    name: 'Strong Start Incentive (SSI)',
+                    amount: bonus,
+                    qualified: bonus > 0,
+                    description: bonus > 0 ? 'New IBO bonus for first 3 months' : 'Not qualified',
+                    details: {
+                        monthsSinceRegistration,
+                        maxPotential: 1000
+                    }
+                };
+            }
+            
+            calculateBFI(income) {
+                const performanceLevel = this.getPerformanceLevel(income.totalPV);
+                
+                if (performanceLevel < 9) {
+                    return { name: 'Bronze Foundation Incentive (BFI)', amount: 0, qualified: false, description: 'Requires 9%+ performance level' };
+                }
+                
+                const multiplierBonus = income.performanceBonus * 0.30;
+                
+                return {
+                    name: 'Bronze Foundation Incentive (BFI)',
+                    amount: multiplierBonus,
+                    qualified: true,
+                    description: '30% multiplier on Performance Bonus',
+                    details: {
+                        'Base Bonus': '$' + income.performanceBonus.toFixed(2),
+                        'Multiplier': '30%'
+                    }
+                };
+            }
+            
+            calculateBBI(income, root) {
+                const performanceLevel = this.getPerformanceLevel(income.totalPV);
+                
+                if (performanceLevel < 18) {
+                    return { name: 'Bronze Builder Incentive (BBI)', amount: 0, qualified: false, description: 'Requires 18%+ performance level' };
+                }
+                
+                const qualifyingLegs = root.children ? root.children.filter(childId => {
+                    const childPV = this.calculateGroupPV(childId);
+                    return this.getPerformanceLevel(childPV) >= 6;
+                }).length : 0;
+                
+                if (qualifyingLegs < 3) {
+                    return { name: 'Bronze Builder Incentive (BBI)', amount: 0, qualified: false, description: 'Requires 3+ legs at 6%+' };
+                }
+                
+                const multiplierBonus = income.performanceBonus * 0.40;
+                
+                return {
+                    name: 'Bronze Builder Incentive (BBI)',
+                    amount: multiplierBonus,
+                    qualified: true,
+                    description: '40% multiplier on Performance Bonus',
+                    details: {
+                        'Qualifying Legs': qualifyingLegs,
+                        'Multiplier': '40%'
+                    }
+                };
+            }
+            
+            calculateRubyBonus(income) {
+                if (income.totalPV < 15000) {
+                    return { name: 'Ruby Bonus', amount: 0, qualified: false, description: 'Requires 15,000+ Ruby PV' };
+                }
+                
+                const bonus = income.totalBV * 0.02;
+                
+                return {
+                    name: 'Ruby Bonus',
+                    amount: bonus,
+                    qualified: true,
+                    description: '2% of Ruby BV for 15,000+ Ruby PV',
+                    details: {
+                        'Ruby PV': income.totalPV.toFixed(0),
+                        'Ruby BV': income.totalBV.toFixed(2)
+                    }
+                };
+            }
+            
+            calculateLeadershipBonus(income, root) {
+                const performanceLevel = this.getPerformanceLevel(income.totalPV);
+                
+                if (performanceLevel < 25) {
+                    return { name: 'Leadership Bonus', amount: 0, qualified: false, description: 'Requires 25% Performance Bonus level' };
+                }
+                
+                const qualifyingLegs = root.children ? root.children.filter(childId => {
+                    const childPV = this.calculateGroupPV(childId);
+                    return this.getPerformanceLevel(childPV) >= 25;
+                }).length : 0;
+                
+                if (qualifyingLegs === 0) {
+                    return { name: 'Leadership Bonus', amount: 0, qualified: false, description: 'No qualifying legs at 25%' };
+                }
+                
+                const bonus = income.totalBV * 0.06 * (qualifyingLegs / 10); // Simplified calculation
+                
+                return {
+                    name: 'Leadership Bonus',
+                    amount: bonus,
+                    qualified: true,
+                    description: 'Up to 6% on qualifying group BV',
+                    details: {
+                        'Qualifying Legs': qualifyingLegs
+                    }
+                };
+            }
+            
+            calculateDepthBonus(income, root) {
+                const performanceLevel = this.getPerformanceLevel(income.totalPV);
+                
+                if (performanceLevel < 25) {
+                    return { name: 'Depth Bonus', amount: 0, qualified: false, description: 'Requires 25% Performance Bonus level' };
+                }
+                
+                const qualifyingLegs = root.children ? root.children.filter(childId => {
+                    const childPV = this.calculateGroupPV(childId);
+                    return this.getPerformanceLevel(childPV) >= 25;
+                }).length : 0;
+                
+                if (qualifyingLegs < 3) {
+                    return { name: 'Depth Bonus', amount: 0, qualified: false, description: 'Requires 3+ frontline groups at 25%' };
+                }
+                
+                const bonus = income.totalBV * 0.01;
+                
+                return {
+                    name: 'Depth Bonus',
+                    amount: bonus,
+                    qualified: true,
+                    description: '1% of qualifying downline BV',
+                    details: {
+                        'Qualifying Legs': qualifyingLegs
+                    }
+                };
+            }
+            
+            calculateGroupPV(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return 0;
+                
+                let total = node.pv;
+                if (node.children) {
+                    node.children.forEach(childId => {
+                        total += this.calculateGroupPV(childId);
+                    });
+                }
+                
+                return total;
+            }
+            
+            calculateGroupBV(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return 0;
+                
+                const vcsStatus = this.checkVCSCompliance(node);
+                let total = vcsStatus.effectiveBV;
+                
+                if (node.children) {
+                    node.children.forEach(childId => {
+                        total += this.calculateGroupBV(childId);
+                    });
+                }
+                
+                return total;
+            }
+            
+            checkVCSCompliance(node) {
+                const totalPV = node.pv;
+                const customerSalesPV = node.customerSalesPV || 0;
+                const vcsPV = node.vcsPV || 0;
+                
+                const customerSalesPercentage = totalPV > 0 ? (customerSalesPV / totalPV) * 100 : 0;
+                const vcsPercentage = totalPV > 0 ? (vcsPV / totalPV) * 100 : 0;
+                
+                const customerSalesCompliant = customerSalesPercentage >= 70;
+                const vcsCompliant = vcsPercentage >= 60;
+                const fullyCompliant = customerSalesCompliant && vcsCompliant;
+                
+                let prorationFactor = 1;
+                if (!fullyCompliant) {
+                    const customerSalesRatio = Math.min(customerSalesPercentage / 70, 1);
+                    const vcsRatio = Math.min(vcsPercentage / 60, 1);
+                    prorationFactor = Math.min(customerSalesRatio, vcsRatio);
+                }
+                
+                return {
+                    compliant: fullyCompliant,
+                    customerSalesCompliant,
+                    vcsCompliant,
+                    prorationFactor,
+                    effectiveBV: node.bv * prorationFactor
+                };
+            }
+            
+            getPerformanceLevel(pv) {
+                for (const tier of this.config.performanceSchedule) {
+                    if (pv >= tier.min && pv <= tier.max) {
+                        return tier.rate;
+                    }
+                }
+                return 0;
+            }
+            
+            // ============================================
+            // UI UPDATE METHODS
+            // ============================================
+            
+            updateIncomeSummary() {
+                const income = this.calculateIncome();
+                const summaryDiv = document.getElementById('income-summary');
+                const totalDiv = document.getElementById('total-income');
+                
+                if (summaryDiv) {
+                    summaryDiv.innerHTML = `
+                        <div class="flex justify-between">
+                            <span>Performance Bonus:</span>
+                            <span class="font-semibold">$${income.performanceBonus.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Differential Bonus:</span>
+                            <span class="font-semibold">$${income.differentialBonus.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Retail Margin:</span>
+                            <span class="font-semibold">$${income.retailMargin.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Customer Sales Incentive:</span>
+                            <span class="font-semibold">$${income.customerSalesIncentive.toFixed(2)}</span>
+                        </div>
+                    `;
+                }
+                
+                if (totalDiv) {
+                    totalDiv.textContent = '$' + income.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+            }
+            
+            updateTeamStats() {
+                const totalMembers = this.state.organization.size - 1;
+                const income = this.calculateIncome();
+                const performanceLevel = this.getPerformanceLevel(income.totalPV);
+                
+                let vcsCompliantCount = 0;
+                this.state.organization.forEach(node => {
+                    if (this.checkVCSCompliance(node).compliant) {
+                        vcsCompliantCount++;
+                    }
+                });
+                
+                const totalMembersDiv = document.getElementById('total-members');
+                const totalPVDiv = document.getElementById('total-pv');
+                const vcsCompliantDiv = document.getElementById('vcs-compliant');
+                const performanceLevelDiv = document.getElementById('performance-level');
+                
+                if (totalMembersDiv) totalMembersDiv.textContent = totalMembers;
+                if (totalPVDiv) totalPVDiv.textContent = Math.round(income.totalPV);
+                if (vcsCompliantDiv) vcsCompliantDiv.textContent = vcsCompliantCount;
+                if (performanceLevelDiv) performanceLevelDiv.textContent = performanceLevel + '%';
+            }
+            
+            updateVCSStatus() {
+                if (!this.state.selectedNode) return;
+                
+                const node = this.state.organization.get(this.state.selectedNode);
+                if (!node) return;
+                
+                const vcsStatus = this.checkVCSCompliance(node);
+                const statusDiv = document.getElementById('vcs-status');
+                
+                if (statusDiv) {
+                    const customerSalesPercentage = node.pv > 0 ? ((node.customerSalesPV || 0) / node.pv) * 100 : 0;
+                    const vcsPercentage = node.pv > 0 ? ((node.vcsPV || 0) / node.pv) * 100 : 0;
+                    
+                    statusDiv.innerHTML = `
+                        <div class="mt-2 p-2 rounded ${vcsStatus.compliant ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            <div class="font-semibold mb-1">${vcsStatus.compliant ? '✓ VCS Compliant' : '⚠ VCS Non-Compliant'}</div>
+                            <div>Customer Sales: ${customerSalesPercentage.toFixed(1)}% ${vcsStatus.customerSalesCompliant ? '✓' : '✗'} (70% required)</div>
+                            <div>VCS: ${vcsPercentage.toFixed(1)}% ${vcsStatus.vcsCompliant ? '✓' : '✗'} (60% required)</div>
+                            ${!vcsStatus.compliant ? `<div class="mt-1 font-semibold">BV Proration: ${(vcsStatus.prorationFactor * 100).toFixed(1)}%</div>` : ''}
+                        </div>
+                    `;
+                }
+            }
+            
+            // ============================================
+            // EVENT HANDLERS
+            // ============================================
+            
+            attachGlobalEventListeners() {
+                // Auto-save every 30 seconds
+                setInterval(() => this.saveData(), 30000);
+            }
+            
+            attachVisualBuilderEvents() {
+                // Member PV input - auto-calculate BV
+                const pvInput = document.getElementById('member-pv');
+                if (pvInput) {
+                    pvInput.addEventListener('input', (e) => {
+                        const pv = parseFloat(e.target.value) || 0;
+                        const bv = pv * this.config.pvToBvRatio;
+                        const bvInput = document.getElementById('member-bv');
+                        if (bvInput) bvInput.value = bv.toFixed(2);
+                        
+                        // Auto-calculate VCS values (70% and 60% defaults)
+                        const customerSalesInput = document.getElementById('customer-sales-pv');
+                        const vcsInput = document.getElementById('vcs-pv');
+                        if (customerSalesInput && !customerSalesInput.value) {
+                            customerSalesInput.value = (pv * 0.7).toFixed(0);
+                        }
+                        if (vcsInput && !vcsInput.value) {
+                            vcsInput.value = (pv * 0.6).toFixed(0);
+                        }
+                        
+                        this.updateVCSStatus();
+                    });
+                }
+                
+                // VCS inputs
+                ['customer-sales-pv', 'vcs-pv'].forEach(id => {
+                    const input = document.getElementById(id);
+                    if (input) {
+                        input.addEventListener('input', () => this.updateVCSStatus());
+                    }
+                });
+            }
+            
+            attachMultiMonthEvents() {
+                // Add any multi-month specific event listeners here
+            }
+            
+            // ============================================
+            // USER ACTIONS
+            // ============================================
+            
+            selectNode(nodeId) {
+                this.state.selectedNode = nodeId;
+                const node = this.state.organization.get(nodeId);
+                
+                if (node) {
+                    const nameInput = document.getElementById('member-name');
+                    const pvInput = document.getElementById('member-pv');
+                    const bvInput = document.getElementById('member-bv');
+                    const customerSalesInput = document.getElementById('customer-sales-pv');
+                    const vcsInput = document.getElementById('vcs-pv');
+                    
+                    if (nameInput) nameInput.value = node.name;
+                    if (pvInput) pvInput.value = node.pv;
+                    if (bvInput) bvInput.value = node.bv.toFixed(2);
+                    if (customerSalesInput) customerSalesInput.value = node.customerSalesPV || (node.pv * 0.7).toFixed(0);
+                    if (vcsInput) vcsInput.value = node.vcsPV || (node.pv * 0.6).toFixed(0);
+                    
+                    this.updateVCSStatus();
+                }
+                
+                this.renderOrganizationChart();
+            }
+            
+            saveMember() {
+                if (!this.state.selectedNode) return;
+                
+                const node = this.state.organization.get(this.state.selectedNode);
+                if (!node) return;
+                
+                const nameInput = document.getElementById('member-name');
+                const pvInput = document.getElementById('member-pv');
+                const customerSalesInput = document.getElementById('customer-sales-pv');
+                const vcsInput = document.getElementById('vcs-pv');
+                
+                if (nameInput) node.name = nameInput.value || node.name;
+                if (pvInput) {
+                    node.pv = parseFloat(pvInput.value) || 0;
+                    node.bv = node.pv * this.config.pvToBvRatio;
+                }
+                if (customerSalesInput) node.customerSalesPV = parseFloat(customerSalesInput.value) || 0;
+                if (vcsInput) node.vcsPV = parseFloat(vcsInput.value) || 0;
+                
+                this.renderOrganizationChart();
+                this.saveData();
+            }
+            
+            addDownline() {
+                if (!this.state.selectedNode) {
+                    alert('Please select a member first');
+                    return;
+                }
+                
+                this.addDownlineToNode(this.state.selectedNode);
+            }
+            
+            addDownlineToNode(parentId) {
+                const parent = this.state.organization.get(parentId);
+                if (!parent) return;
+                
+                const newId = `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const newNode = {
+                    id: newId,
+                    name: 'New IBO',
+                    pv: 100,
+                    bv: 100 * this.config.pvToBvRatio,
+                    customerSalesPV: 70,
+                    vcsPV: 60,
+                    vcsCompliant: true,
+                    children: [],
+                    parent: parentId,
+                    level: parent.level + 1,
+                    registrationDate: new Date().toISOString()
+                };
+                
+                this.state.organization.set(newId, newNode);
+                if (!parent.children) parent.children = [];
+                parent.children.push(newId);
+                
+                this.selectNode(newId);
+                this.renderOrganizationChart();
+                this.saveData();
+            }
+            
+            deleteMember(deleteChildren = false, nodeId = null) {
+                const targetId = nodeId || this.state.selectedNode;
+                
+                if (!targetId || targetId === 'root') {
+                    alert('Cannot delete root node');
+                    return;
+                }
+                
+                const node = this.state.organization.get(targetId);
+                if (!node) return;
+                
+                const confirmMsg = deleteChildren 
+                    ? `Delete ${node.name} and their entire group?`
+                    : `Delete ${node.name}? Their downline will move up.`;
+                
+                if (!confirm(confirmMsg)) return;
+                
+                const parent = this.state.organization.get(node.parent);
+                if (!parent) return;
+                
+                // Remove from parent's children
+                parent.children = parent.children.filter(id => id !== targetId);
+                
+                if (!deleteChildren && node.children && node.children.length > 0) {
+                    // Move children up to parent
+                    node.children.forEach(childId => {
+                        const child = this.state.organization.get(childId);
+                        if (child) {
+                            child.parent = parent.id;
+                            child.level = node.level;
+                            parent.children.push(childId);
+                        }
+                    });
+                } else if (deleteChildren && node.children) {
+                    // Recursively delete all children
+                    const deleteRecursive = (id) => {
+                        const n = this.state.organization.get(id);
+                        if (n && n.children) {
+                            n.children.forEach(childId => deleteRecursive(childId));
+                        }
+                        this.state.organization.delete(id);
+                    };
+                    
+                    node.children.forEach(childId => deleteRecursive(childId));
+                }
+                
+                this.state.organization.delete(targetId);
+                this.state.selectedNode = null;
+                this.renderOrganizationChart();
+                this.saveData();
+            }
+            
+            pushToMultiMonth() {
+                const currentMonth = this.state.currentMonth;
+                const organizationSnapshot = new Map();
+                
+                // Deep clone organization
+                this.state.organization.forEach((node, id) => {
+                    organizationSnapshot.set(id, {
+                        ...node,
+                        children: node.children ? [...node.children] : []
+                    });
+                });
+                
+                const income = this.calculateIncome();
+                
+                this.state.monthlyData.set(currentMonth, {
+                    organization: organizationSnapshot,
+                    income: { ...income },
+                    timestamp: new Date().toISOString()
+                });
+                
+                this.saveData();
+                alert(`Business structure pushed to ${this.formatMonth(currentMonth)}!`);
+            }
+            
+            switchTab(tabName) {
+                this.state.currentTab = tabName;
+                
+                // Update tab buttons
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.tab === tabName) {
+                        btn.classList.add('active');
+                    }
+                });
+                
+                this.renderTabContent();
+            }
+            
+            toggleIncomeDetails() {
+                const modal = document.getElementById('income-details-modal');
+                if (!modal) return;
+                
+                if (modal.classList.contains('show')) {
+                    modal.classList.remove('show');
+                } else {
+                    // Generate detailed breakdown
+                    const content = document.getElementById('income-details-content');
+                    if (content) {
+                        content.innerHTML = this.generateDetailedIncomeBreakdown();
+                    }
+                    modal.classList.add('show');
+                }
+            }
+            
+            generateDetailedIncomeBreakdown() {
+                const income = this.calculateIncome();
+                const root = this.state.organization.get('root');
+                const yourLevel = this.getPerformanceLevel(income.totalPV);
+                
+                let html = `
+                    <div class="space-y-6">
+                        <!-- Personal Performance -->
+                        <div class="border-b pb-4">
+                            <h4 class="font-bold mb-3">Your Personal Performance Bonus</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Your Personal PV:</span>
+                                    <span class="font-mono">${root.pv}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Your Personal BV:</span>
+                                    <span class="font-mono">${root.bv.toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Total Group PV:</span>
+                                    <span class="font-mono">${income.totalPV.toFixed(0)}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Performance Level:</span>
+                                    <span class="font-mono font-bold text-blue-600">${yourLevel}%</span>
+                                </div>
+                                <div class="flex justify-between font-bold text-green-600 pt-2 border-t">
+                                    <span>Calculation: ${income.totalBV.toFixed(2)} × ${yourLevel}% =</span>
+                                    <span>$${income.performanceBonus.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                `;
+                
+                // Differential Bonuses
+                if (root.children && root.children.length > 0) {
+                    html += `
+                        <div class="border-b pb-4">
+                            <h4 class="font-bold mb-3">Differential Bonuses (Frontline)</h4>
+                            <div class="space-y-3">
+                    `;
+                    
+                    root.children.forEach(childId => {
+                        const child = this.state.organization.get(childId);
+                        if (!child) return;
+                        
+                        const childGroupPV = this.calculateGroupPV(childId);
+                        const childGroupBV = this.calculateGroupBV(childId);
+                        const theirLevel = this.getPerformanceLevel(childGroupPV);
+                        const differential = yourLevel - theirLevel;
+                        const diffBonus = childGroupBV * (differential / 100);
+                        
+                        html += `
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <div class="font-semibold mb-2">${child.name}</div>
+                                <div class="space-y-1 text-xs">
+                                    <div class="flex justify-between">
+                                        <span>Their Group PV:</span>
+                                        <span class="font-mono">${childGroupPV.toFixed(0)}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Their Group BV:</span>
+                                        <span class="font-mono">${childGroupBV.toFixed(2)}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Their Performance Level:</span>
+                                        <span class="font-mono">${theirLevel}%</span>
+                                    </div>
+                                    <div class="flex justify-between text-blue-600 pt-1 border-t">
+                                        <span>Differential:</span>
+                                        <span class="font-mono">(${yourLevel}% - ${theirLevel}%) = ${differential}%</span>
+                                    </div>
+                                    <div class="flex justify-between font-bold text-green-600">
+                                        <span>Bonus: ${childGroupBV.toFixed(2)} × ${differential}% =</span>
+                                        <span>$${diffBonus.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Additional Income Streams
+                html += `
+                    <div class="border-b pb-4">
+                        <h4 class="font-bold mb-3">Additional Income Streams</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span>Retail Margin (10% of customer sales):</span>
+                                <span class="font-bold">$${income.retailMargin.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Customer Sales Incentive (up to $75):</span>
+                                <span class="font-bold">$${income.customerSalesIncentive.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Total -->
+                    <div class="bg-green-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-800">Total Monthly Income:</span>
+                            <span class="text-3xl font-bold text-green-600">$${income.total.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+                `;
+                
+                return html;
+            }
+            
+            // ============================================
+            // ZOOM CONTROLS
+            // ============================================
+            
+            zoomIn() {
+                this.state.zoomLevel = Math.min(2, this.state.zoomLevel + 0.1);
+                this.applyZoom();
+            }
+            
+            zoomOut() {
+                this.state.zoomLevel = Math.max(0.5, this.state.zoomLevel - 0.1);
+                this.applyZoom();
+            }
+            
+            autoFit() {
+                this.state.zoomLevel = 1;
+                this.applyZoom();
+            }
+            
+            applyZoom() {
+                const chart = document.getElementById('org-chart');
+                if (chart) {
+                    chart.style.transform = `scale(${this.state.zoomLevel})`;
+                }
+            }
+            
+            // ============================================
+            // ANALYTICS HELPERS
+            // ============================================
+            
+            getVisibleMonths() {
+                const allMonths = Array.from(this.state.monthlyData.keys()).sort();
+                const start = this.state.timelineStartIndex;
+                const end = start + this.state.timelineRange;
+                return allMonths.slice(start, end);
+            }
+            
+            getVisibleMonthsLabel() {
+                const visible = this.getVisibleMonths();
+                if (visible.length === 0) return 'No data';
+                if (visible.length === 1) return this.formatMonthShort(visible[0]);
+                return `${this.formatMonthShort(visible[0])} - ${this.formatMonthShort(visible[visible.length - 1])}`;
+            }
+            
+            scrollTimeline(direction) {
+                const allMonths = Array.from(this.state.monthlyData.keys()).sort();
+                const maxStart = Math.max(0, allMonths.length - this.state.timelineRange);
+                
+                if (direction === 'left') {
+                    this.state.timelineStartIndex = Math.max(0, this.state.timelineStartIndex - this.state.timelineRange);
+                } else {
+                    this.state.timelineStartIndex = Math.min(maxStart, this.state.timelineStartIndex + this.state.timelineRange);
+                }
+                
+                this.renderTabContent();
+            }
+            
+            updateTimelineRange(range) {
+                this.state.timelineRange = parseInt(range);
+                this.renderTabContent();
+            }
+            
+            // ============================================
+            // DATA PERSISTENCE
+            // ============================================
+            
+            saveData() {
+                try {
+                    const dataToSave = {
+                        version: '1.0',
+                        organization: Array.from(this.state.organization.entries()),
+                        monthlyData: Array.from(this.state.monthlyData.entries()).map(([month, data]) => [
+                            month,
+                            {
+                                organization: Array.from(data.organization.entries()),
+                                income: data.income,
+                                timestamp: data.timestamp
+                            }
+                        ]),
+                        selectedNode: this.state.selectedNode,
+                        currentMonth: this.state.currentMonth,
+                        lastSaved: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem('amwayBusinessPlanner', JSON.stringify(dataToSave));
+                    console.log('Data saved successfully');
+                } catch (error) {
+                    console.error('Error saving data:', error);
+                    alert('Error saving data. Your browser storage may be full.');
+                }
+            }
+            
+            loadSavedData() {
+                try {
+                    const saved = localStorage.getItem('amwayBusinessPlanner');
+                    if (!saved) return;
+                    
+                    const data = JSON.parse(saved);
+                    
+                    if (data.organization) {
+                        this.state.organization = new Map(data.organization);
+                    }
+                    
+                    if (data.monthlyData) {
+                        this.state.monthlyData = new Map(
+                            data.monthlyData.map(([month, monthData]) => [
+                                month,
+                                {
+                                    organization: new Map(monthData.organization),
+                                    income: monthData.income,
+                                    timestamp: monthData.timestamp
+                                }
+                            ])
+                        );
+                    }
+                    
+                    if (data.selectedNode) {
+                        this.state.selectedNode = data.selectedNode;
+                    }
+                    
+                    if (data.currentMonth) {
+                        this.state.currentMonth = data.currentMonth;
+                    }
+                    
+                    console.log('Data loaded successfully');
+                } catch (error) {
+                    console.error('Error loading saved data:', error);
+                }
+            }
+            
+            // ============================================
+            // UTILITY METHODS
+            // ============================================
+            
+            formatMonth(monthStr) {
+                const [year, month] = monthStr.split('-');
+                const date = new Date(year, month - 1);
+                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            }
+            
+            formatMonthShort(monthStr) {
+                const [year, month] = monthStr.split('-');
+                const date = new Date(year, month - 1);
+                return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            }
+            
+            formatKey(key) {
+                return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            }
+            
+            getMonthsSince(date) {
+                const now = new Date();
+                return (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth());
+            }
+        }
+        
+        // ============================================
+        // EXPORT MANAGER CLASS
+        // ============================================
+        
+        class ExportManager {
+            constructor(planner) {
+                this.planner = planner;
+            }
+            
+            async exportToPDF() {
+                alert('Generating PDF... This may take a moment.');
+                
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    
+                    // Cover Page
+                    pdf.setFontSize(24);
+                    pdf.text('Amway Business Plan', 105, 40, { align: 'center' });
+                    pdf.setFontSize(14);
+                    pdf.text(`Generated: ${new Date().toLocaleDateString()}`, 105, 50, { align: 'center' });
+                    
+                    // Organization Chart
+                    pdf.addPage();
+                    pdf.setFontSize(18);
+                    pdf.text('Organization Structure', 20, 20);
+                    
+                    const chartElement = document.getElementById('org-chart');
+                    if (chartElement) {
+                        const canvas = await html2canvas(chartElement, {
+                            scale: 2,
+                            logging: false,
+                            backgroundColor: '#ffffff'
+                        });
+                        
+                        const imgData = canvas.toDataURL('image/png');
+                        const imgWidth = 170;
+                        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                        pdf.addImage(imgData, 'PNG', 20, 30, imgWidth, Math.min(imgHeight, 250));
+                    }
+                    
+                    // Income Summary
+                    pdf.addPage();
+                    pdf.setFontSize(18);
+                    pdf.text('Income Summary', 20, 20);
+                    
+                    const income = this.planner.calculateIncome();
+                    let yPos = 40;
+                    
+                    pdf.setFontSize(12);
+                    pdf.text(`Performance Bonus: $${income.performanceBonus.toFixed(2)}`, 20, yPos);
+                    yPos += 10;
+                    pdf.text(`Differential Bonus: $${income.differentialBonus.toFixed(2)}`, 20, yPos);
+                    yPos += 10;
+                    pdf.text(`Retail Margin: $${income.retailMargin.toFixed(2)}`, 20, yPos);
+                    yPos += 10;
+                    pdf.text(`Customer Sales Incentive: $${income.customerSalesIncentive.toFixed(2)}`, 20, yPos);
+                    yPos += 15;
+                    
+                    pdf.setFontSize(14);
+                    pdf.text(`Total Monthly Income: $${income.total.toFixed(2)}`, 20, yPos);
+                    
+                    // Disclaimers
+                    pdf.addPage();
+                    pdf.setFontSize(10);
+                    pdf.text('Important Disclaimers:', 20, 20);
+                    yPos = 30;
+                    
+                    const disclaimers = [
+                        'For the calendar year 2023, the average income from Amway for all U.S. registered',
+                        'IBOs at the Founders Platinum level and below was $841 before expenses.',
+                        '',
+                        'Earnings depend on many factors, including customer base, business experience,',
+                        'effort, dedication, and quality and performance of the downline sales team.',
+                        '',
+                        'This calculator provides estimates based on 2024 compensation plan data and',
+                        'should be used for planning purposes only.'
+                    ];
+                    
+                    disclaimers.forEach(line => {
+                        pdf.text(line, 20, yPos);
+                        yPos += 5;
+                    });
+                    
+                    pdf.save(`Amway_Business_Plan_${new Date().toISOString().slice(0, 10)}.pdf`);
+                    alert('PDF exported successfully!');
+                } catch (error) {
+                    console.error('Error exporting PDF:', error);
+                    alert('Error exporting PDF. Please try again.');
+                }
+            }
+            
+            async exportToImage() {
+                alert('Generating image... This may take a moment.');
+                
+                try {
+                    const chartElement = document.getElementById('org-chart');
+                    if (!chartElement) {
+                        alert('No organization chart to export');
+                        return;
+                    }
+                    
+                    const canvas = await html2canvas(chartElement, {
+                        scale: 3,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    });
+                    
+                    canvas.toBlob((blob) => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Amway_Org_Chart_${new Date().toISOString().slice(0, 10)}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        alert('Image exported successfully!');
+                    });
+                } catch (error) {
+                    console.error('Error exporting image:', error);
+                    alert('Error exporting image. Please try again.');
+                }
+            }
+        }
+        
+        // ============================================
+        // INITIALIZE APPLICATION
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            window.app = new AmwayBusinessPlanner();
+            window.app.exportManager = new ExportManager(window.app);
+        });
+    </script>
+</body>
+</html>

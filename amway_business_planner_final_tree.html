@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amway Business Planner - Hierarchical Tree Edition</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; }
+        .header { background-color: #0033a0; color: white; padding: 1rem; text-align: center; }
+        .nav-tabs .nav-link.active { background-color: #0033a0; color: white; }
+        #organization-chart {
+            overflow-x: auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            margin-top: 20px;
+            min-height: 500px;
+        }
+
+        /* New Hierarchical Tree Styles */
+        .tree {
+            display: flex;
+            justify-content: flex-start; /* Align tree to the left */
+            min-width: 100%;
+        }
+        .tree ul {
+            padding-top: 20px;
+            position: relative;
+            transition: all 0.5s;
+            display: flex;
+        }
+        .tree li {
+            text-align: center;
+            list-style-type: none;
+            position: relative;
+            padding: 20px 5px 0 5px;
+            transition: all 0.5s;
+        }
+        /* Connectors */
+        .tree li::before, .tree li::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 50%;
+            border-top: 2px solid #ccc;
+            width: 50%;
+            height: 20px;
+        }
+        .tree li::after {
+            right: auto;
+            left: 50%;
+            border-left: 2px solid #ccc;
+        }
+        .tree li:only-child::after, .tree li:only-child::before {
+            display: none;
+        }
+        .tree li:only-child {
+            padding-top: 0;
+        }
+        .tree li:first-child::before, .tree li:last-child::after {
+            border: 0 none;
+        }
+        .tree li:last-child::before {
+            border-right: 2px solid #ccc;
+            border-radius: 0 5px 0 0;
+        }
+        .tree li:first-child::after {
+            border-radius: 5px 0 0 0;
+        }
+        .tree ul ul::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            border-left: 2px solid #ccc;
+            width: 0;
+            height: 20px;
+        }
+
+        /* Node Box Styles */
+        .node-box {
+            border: 2px solid #0033a0;
+            padding: 10px;
+            display: inline-block;
+            border-radius: 8px;
+            min-width: 180px;
+            background-color: #eaf2ff;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .node-box h5 { color: #0033a0; }
+        .vcs-indicator { font-weight: bold; }
+        .node-actions .btn { margin: 0 2px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Amway Business Planner</h1>
+    </div>
+
+    <div class="container-fluid mt-4">
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="builder-tab" data-toggle="tab" href="#builder" role="tab">Visual Builder</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="multi-month-tab" data-toggle="tab" href="#multi-month" role="tab">Multi-Month Planning</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="reports-tab" data-toggle="tab" href="#reports" role="tab">Reports</a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="builder" role="tabpanel">
+                <div id="organization-chart"></div>
+            </div>
+            <div class="tab-pane fade" id="multi-month" role="tabpanel">
+                <div class="p-4">
+                    <h3>Multi-Month Income & Growth Projection</h3>
+                    <p>Plan your business growth over time. Set a monthly growth rate to see how your income evolves.</p>
+                    <div class="form-row align-items-center">
+                        <div class="col-auto">
+                            <label for="growthRateInput">Monthly PV Growth Rate (%)</label>
+                            <input type="number" class="form-control mb-2" id="growthRateInput" value="5">
+                        </div>
+                        <div class="col-auto">
+                            <label for="monthsInput">Projection (Months)</label>
+                            <input type="number" class="form-control mb-2" id="monthsInput" value="12">
+                        </div>
+                        <div class="col-auto">
+                             <button id="calculateProjectionBtn" class="btn btn-primary mt-4">Calculate</button>
+                        </div>
+                    </div>
+                    <div id="projection-table" class="mt-4"></div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="reports" role="tabpanel">
+                <div class="p-4">
+                    <h3>Business Reports</h3>
+                    <p>A real-time overview of your organization's key metrics.</p>
+                    <div id="reports-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit IBO Modal -->
+    <div class="modal fade" id="editIboModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Edit IBO</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="iboIdInput">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" class="form-control" id="nameInput" placeholder="IBO Name">
+                    </div>
+                    <div class="form-group">
+                        <label>Personal PV</label>
+                        <small class="form-text text-muted">Editing PV will auto-calculate BV (1 PV = 3.43 BV)</small>
+                        <input type="number" class="form-control" id="pvInput" placeholder="e.g., 150">
+                    </div>
+                    <div class="form-group">
+                        <label>Personal BV</label>
+                         <input type="number" class="form-control" id="bvInput" placeholder="e.g., 514.5">
+                    </div>
+                    <div class="form-group">
+                        <label>VCS Compliance %</label>
+                        <input type="number" class="form-control" id="vcsInput" placeholder="e.g., 70">
+                    </div>
+                     <button id="setCompliantBtn" class="btn btn-info btn-sm">Set Compliant (70%)</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveIboBtn">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PV_TO_BV_RATIO = 3.43;
+
+        let iboData = [{
+            id: 1,
+            name: "You",
+            pv: 300,
+            bv: 1029,
+            vcsPercentage: 100,
+            children: []
+        }];
+
+        function findIboById(id, node = iboData[0]) {
+            if (node.id === id) return node;
+            for (const child of node.children) {
+                const found = findIboById(id, child);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function findParentOf(id, node = iboData[0]) {
+            for (const child of node.children) {
+                if (child.id === id) return node;
+                const found = findParentOf(id, child);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function createTreeHTML(ibo) {
+            let childrenHTML = '';
+            if (ibo.children && ibo.children.length > 0) {
+                childrenHTML += '<ul>';
+                for (const child of ibo.children) {
+                    childrenHTML += createTreeHTML(child);
+                }
+                childrenHTML += '</ul>';
+            }
+
+            const vcsIndicator = ibo.vcsPercentage >= 70 ? '✅' : '❌';
+            const nodeContent = `
+                <div class="node-box" data-id="${ibo.id}">
+                    <h5>${ibo.name}</h5>
+                    <p class="mb-1">PV: ${ibo.pv} | BV: ${ibo.bv}</p>
+                    <p class="mb-2">VCS: ${ibo.vcsPercentage}% <span class="vcs-indicator">${vcsIndicator}</span></p>
+                    <div class="node-actions">
+                        <button class="btn btn-sm btn-success add-downline-btn" title="Add IBO">+</button>
+                        <button class="btn btn-sm btn-primary edit-ibo-btn" title="Edit IBO">Edit</button>
+                        ${ibo.id !== 1 ? '<button class="btn btn-sm btn-danger remove-ibo-btn" title="Remove IBO">X</button>' : ''}
+                    </div>
+                </div>
+            `;
+
+            return `<li>${nodeContent}${childrenHTML}</li>`;
+        }
+
+        function renderOrganization() {
+            const chartContainer = document.getElementById('organization-chart');
+            if (!iboData || iboData.length === 0) {
+                chartContainer.innerHTML = '<p>No IBO data. Please initialize.</p>';
+                return;
+            }
+            const rootIbo = iboData[0];
+            const treeHTML = `<div class="tree"><ul>${createTreeHTML(rootIbo)}</ul></div>`;
+            chartContainer.innerHTML = treeHTML;
+            attachEventListeners();
+        }
+
+        function attachEventListeners() {
+            document.querySelectorAll('.add-downline-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const parentId = parseInt(e.currentTarget.closest('.node-box').dataset.id);
+                    showEditIboModal(null, parentId);
+                });
+            });
+
+            document.querySelectorAll('.edit-ibo-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const iboId = parseInt(e.currentTarget.closest('.node-box').dataset.id);
+                    showEditIboModal(iboId);
+                });
+            });
+
+            document.querySelectorAll('.remove-ibo-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                     if(confirm('Are you sure you want to remove this IBO and their entire downline?')) {
+                        const iboId = parseInt(e.currentTarget.closest('.node-box').dataset.id);
+                        removeIbo(iboId);
+                    }
+                });
+            });
+        }
+
+        function showEditIboModal(iboId, parentId = null) {
+            const isNew = !iboId;
+            if (isNew) {
+                document.getElementById('modalTitle').innerText = 'Add New IBO';
+                document.getElementById('iboIdInput').value = `new_${parentId}`;
+                document.getElementById('nameInput').value = '';
+                // Set default values for new IBO
+                document.getElementById('pvInput').value = 150;
+                document.getElementById('bvInput').value = 150 * PV_TO_BV_RATIO;
+                document.getElementById('vcsInput').value = 70; // Default to compliant
+            } else {
+                const ibo = findIboById(iboId);
+                document.getElementById('modalTitle').innerText = `Edit ${ibo.name}`;
+                document.getElementById('iboIdInput').value = ibo.id;
+                document.getElementById('nameInput').value = ibo.name;
+                document.getElementById('pvInput').value = ibo.pv;
+                document.getElementById('bvInput').value = ibo.bv;
+                document.getElementById('vcsInput').value = ibo.vcsPercentage;
+            }
+            $('#editIboModal').modal('show');
+        }
+
+        function saveIboData() {
+            const iboIdRaw = document.getElementById('iboIdInput').value;
+            const name = document.getElementById('nameInput').value;
+            const pv = parseFloat(document.getElementById('pvInput').value) || 0;
+            const bv = parseFloat(document.getElementById('bvInput').value) || 0;
+            const vcsPercentage = parseFloat(document.getElementById('vcsInput').value) || 0;
+
+            if (!name) {
+                alert('IBO Name is required.');
+                return;
+            }
+
+            if (iboIdRaw.startsWith('new_')) {
+                const parentId = parseInt(iboIdRaw.split('_')[1]);
+                const parent = findIboById(parentId);
+                const newIbo = {
+                    id: Date.now(),
+                    name,
+                    pv,
+                    bv,
+                    vcsPercentage,
+                    children: []
+                };
+                parent.children.push(newIbo);
+            } else {
+                const ibo = findIboById(parseInt(iboIdRaw));
+                ibo.name = name;
+                ibo.pv = pv;
+                ibo.bv = bv;
+                ibo.vcsPercentage = vcsPercentage;
+            }
+
+            $('#editIboModal').modal('hide');
+            renderAll();
+        }
+
+        function removeIbo(iboId) {
+            const parent = findParentOf(iboId);
+            if(parent) {
+                parent.children = parent.children.filter(child => child.id !== iboId);
+                renderAll();
+            } else {
+                alert("Cannot remove the root IBO.");
+            }
+        }
+
+        function renderAll() {
+            renderOrganization();
+            renderReports();
+            renderProjection();
+        }
+
+        // --- Reports Tab Logic ---
+        function getTotalPV(node = iboData[0]) {
+            let total = node.pv;
+            for (const child of node.children) {
+                total += getTotalPV(child);
+            }
+            return total;
+        }
+
+        function getTeamSize(node = iboData[0]) {
+            let size = 1;
+            for (const child of node.children) {
+                size += getTeamSize(child);
+            }
+            return size;
+        }
+
+        function renderReports() {
+            const reportsContainer = document.getElementById('reports-content');
+            const totalPV = getTotalPV();
+            const teamSize = getTeamSize();
+            // NOTE: A full income calculation is very complex. This is a simplified placeholder.
+            const estimatedIncome = totalPV * 0.1;
+
+            reportsContainer.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Group PV</h5>
+                                <p class="card-text">${totalPV.toFixed(2)}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Team Size</h5>
+                                <p class="card-text">${teamSize}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Estimated Monthly Income</h5>
+                                <p class="card-text">$${estimatedIncome.toFixed(2)}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Multi-Month Projection Logic ---
+        function renderProjection() {
+            const projectionContainer = document.getElementById('projection-table');
+            const growthRate = parseFloat(document.getElementById('growthRateInput').value) / 100;
+            const months = parseInt(document.getElementById('monthsInput').value);
+            const initialPV = getTotalPV();
+
+            let tableHTML = '<table class="table table-striped"><thead><tr><th>Month</th><th>Projected PV</th><th>Estimated Income</th></tr></thead><tbody>';
+            let currentPV = initialPV;
+
+            for (let i = 1; i <= months; i++) {
+                currentPV *= (1 + growthRate);
+                let estimatedIncome = currentPV * 0.1; // Simplified income
+                tableHTML += `<tr><td>${i}</td><td>${currentPV.toFixed(2)}</td><td>$${estimatedIncome.toFixed(2)}</td></tr>`;
+            }
+
+            tableHTML += '</tbody></table>';
+            projectionContainer.innerHTML = tableHTML;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderAll();
+            document.getElementById('saveIboBtn').addEventListener('click', saveIboData);
+            document.getElementById('calculateProjectionBtn').addEventListener('click', renderProjection);
+
+            // Auto-calculate BV from PV
+            document.getElementById('pvInput').addEventListener('input', (e) => {
+                const pv = parseFloat(e.target.value) || 0;
+                document.getElementById('bvInput').value = (pv * PV_TO_BV_RATIO).toFixed(2);
+            });
+
+            // Set compliant button
+            document.getElementById('setCompliantBtn').addEventListener('click', () => {
+                document.getElementById('vcsInput').value = 70;
+            });
+        });
+
+        console.log('🚀 Amway Ultimate Business Planner 2024 - HIERARCHICAL TREE EDITION with NO OVERLAPPING!');
+    </script>
+</body>
+</html>

@@ -21,79 +21,38 @@
             min-height: 500px;
         }
 
-        /* New Hierarchical Tree Styles */
-        .tree {
-            display: flex;
-            justify-content: flex-start; /* Align tree to the left */
-            min-width: 100%;
-        }
-        .tree ul {
-            padding-top: 20px;
+        /* Organization Chart Styles */
+        #organization-chart {
             position: relative;
-            transition: all 0.5s;
-            display: flex;
+            min-height: 600px;
+            overflow: auto;
         }
-        .tree li {
+        .org-node {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             text-align: center;
-            list-style-type: none;
-            position: relative;
-            padding: 20px 5px 0 5px;
-            transition: all 0.5s;
+            border: 4px solid white;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            cursor: pointer;
         }
-        /* Connectors */
-        .tree li::before, .tree li::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 50%;
-            border-top: 2px solid #ccc;
-            width: 50%;
-            height: 20px;
-        }
-        .tree li::after {
-            right: auto;
-            left: 50%;
-            border-left: 2px solid #ccc;
-        }
-        .tree li:only-child::after, .tree li:only-child::before {
-            display: none;
-        }
-        .tree li:only-child {
-            padding-top: 0;
-        }
-        .tree li:first-child::before, .tree li:last-child::after {
-            border: 0 none;
-        }
-        .tree li:last-child::before {
-            border-right: 2px solid #ccc;
-            border-radius: 0 5px 0 0;
-        }
-        .tree li:first-child::after {
-            border-radius: 5px 0 0 0;
-        }
-        .tree ul ul::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            border-left: 2px solid #ccc;
-            width: 0;
-            height: 20px;
-        }
+        .org-node .name { font-weight: bold; }
+        .org-node .pv { font-size: 0.9em; }
+        .org-node .vcs-indicator { font-size: 1.2em; }
 
-        /* Node Box Styles */
-        .node-box {
-            border: 2px solid #0033a0;
-            padding: 10px;
-            display: inline-block;
-            border-radius: 8px;
-            min-width: 180px;
-            background-color: #eaf2ff;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        .connection-line {
+            position: absolute;
+            background-color: #ccc;
+            z-index: -1;
         }
-        .node-box h5 { color: #0033a0; }
-        .vcs-indicator { font-weight: bold; }
-        .node-actions .btn { margin: 0 2px; }
 
     </style>
 </head>
@@ -217,68 +176,126 @@
             return null;
         }
 
-        function createTreeHTML(ibo) {
-            let childrenHTML = '';
-            if (ibo.children && ibo.children.length > 0) {
-                childrenHTML += '<ul>';
-                for (const child of ibo.children) {
-                    childrenHTML += createTreeHTML(child);
-                }
-                childrenHTML += '</ul>';
-            }
+        function createNodeElement(ibo) {
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'org-node';
+            nodeDiv.dataset.id = ibo.id;
 
             const vcsIndicator = ibo.vcsPercentage >= 70 ? '✅' : '❌';
-            const nodeContent = `
-                <div class="node-box" data-id="${ibo.id}">
-                    <h5>${ibo.name}</h5>
-                    <p class="mb-1">PV: ${ibo.pv} | BV: ${ibo.bv}</p>
-                    <p class="mb-2">VCS: ${ibo.vcsPercentage}% <span class="vcs-indicator">${vcsIndicator}</span></p>
-                    <div class="node-actions">
-                        <button class="btn btn-sm btn-success add-downline-btn" title="Add IBO">+</button>
-                        <button class="btn btn-sm btn-primary edit-ibo-btn" title="Edit IBO">Edit</button>
-                        ${ibo.id !== 1 ? '<button class="btn btn-sm btn-danger remove-ibo-btn" title="Remove IBO">X</button>' : ''}
-                    </div>
+
+            nodeDiv.innerHTML = `
+                <div class="name">${ibo.name}</div>
+                <div class="pv">${ibo.pv} PV</div>
+                <div class="vcs-indicator">${vcsIndicator}</div>
+                <div class="node-actions" style="position: absolute; top: -10px; right: -10px; display: flex; gap: 5px;">
+                     <button class="btn btn-sm btn-success add-downline-btn" title="Add IBO" style="border-radius: 50%; width: 24px; height: 24px;">+</button>
+                     <button class="btn btn-sm btn-primary edit-ibo-btn" title="Edit IBO" style="border-radius: 50%; width: 24px; height: 24px;">E</button>
+                    ${ibo.id !== 1 ? `<button class="btn btn-sm btn-danger remove-ibo-btn" title="Remove IBO" style="border-radius: 50%; width: 24px; height: 24px;">X</button>` : ''}
                 </div>
             `;
 
-            return `<li>${nodeContent}${childrenHTML}</li>`;
+            // Attach events directly to the buttons inside the node
+            nodeDiv.querySelector('.add-downline-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                showEditIboModal(null, ibo.id);
+            });
+            nodeDiv.querySelector('.edit-ibo-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                showEditIboModal(ibo.id);
+            });
+            if (ibo.id !== 1) {
+                nodeDiv.querySelector('.remove-ibo-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if(confirm('Are you sure you want to remove this IBO and their entire downline?')) {
+                        removeIbo(ibo.id);
+                    }
+                });
+            }
+
+            return nodeDiv;
         }
 
         function renderOrganization() {
             const chartContainer = document.getElementById('organization-chart');
-            if (!iboData || iboData.length === 0) {
-                chartContainer.innerHTML = '<p>No IBO data. Please initialize.</p>';
-                return;
+            chartContainer.innerHTML = ''; // Clear previous render
+
+            const positions = {};
+            const nodeWidth = 140; // Includes margin
+            const levelHeight = 160;
+
+            function calculatePositions(ibo, level = 0, startX = 0) {
+                const children = ibo.children || [];
+                let childrenWidth = 0;
+                let childStartX = startX;
+                const siblingGap = 40; // Add a gap between sibling branches
+
+                // Recursively calculate positions for children first
+                for (const child of children) {
+                    const childWidth = calculatePositions(child, level + 1, childStartX);
+                    childrenWidth += childWidth + siblingGap;
+                    childStartX += childWidth + siblingGap;
+                }
+                if (children.length > 0) {
+                    childrenWidth -= siblingGap; // Remove last gap
+                }
+
+                // Position the parent in the middle of its children
+                let x;
+                if (children.length > 0) {
+                    const firstChildPos = positions[children[0].id];
+                    const lastChildPos = positions[children[children.length - 1].id];
+                    x = (firstChildPos.x + lastChildPos.x) / 2;
+                } else {
+                    x = startX;
+                }
+
+                positions[ibo.id] = { x: x, y: level * levelHeight };
+
+                // Return the total width of this branch
+                return Math.max(nodeWidth, childrenWidth);
             }
-            const rootIbo = iboData[0];
-            const treeHTML = `<div class="tree"><ul>${createTreeHTML(rootIbo)}</ul></div>`;
-            chartContainer.innerHTML = treeHTML;
-            attachEventListeners();
-        }
 
-        function attachEventListeners() {
-            document.querySelectorAll('.add-downline-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const parentId = parseInt(e.currentTarget.closest('.node-box').dataset.id);
-                    showEditIboModal(null, parentId);
-                });
-            });
+            const totalWidth = calculatePositions(iboData[0]);
 
-            document.querySelectorAll('.edit-ibo-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const iboId = parseInt(e.currentTarget.closest('.node-box').dataset.id);
-                    showEditIboModal(iboId);
-                });
-            });
+            // Normalize and center the tree
+            let minX = Infinity;
+            for(const id in positions) {
+                minX = Math.min(minX, positions[id].x);
+            }
+            const chartWidth = chartContainer.clientWidth;
+            const shiftX = (chartWidth / 2) - (totalWidth / 2) - minX;
 
-            document.querySelectorAll('.remove-ibo-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                     if(confirm('Are you sure you want to remove this IBO and their entire downline?')) {
-                        const iboId = parseInt(e.currentTarget.closest('.node-box').dataset.id);
-                        removeIbo(iboId);
+            // Create and position nodes
+            for (const iboId in positions) {
+                const ibo = findIboById(parseInt(iboId));
+                if (ibo) {
+                    const pos = positions[iboId];
+                    const nodeEl = createNodeElement(ibo);
+                    nodeEl.style.left = `${pos.x + shiftX}px`;
+                    nodeEl.style.top = `${pos.y}px`;
+                    chartContainer.appendChild(nodeEl);
+
+                    // Draw line to parent
+                    const parent = findParentOf(ibo.id);
+                    if (parent && positions[parent.id]) {
+                        const parentPos = positions[parent.id];
+                        const line = document.createElement('div');
+                        line.className = 'connection-line';
+                        const dx = pos.x - parentPos.x;
+                        const dy = pos.y - parentPos.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+                        line.style.width = `${distance}px`;
+                        line.style.height = '2px';
+                        line.style.transform = `rotate(${angle}deg)`;
+                        line.style.transformOrigin = '0 0';
+                        line.style.left = `${parentPos.x + 60 + shiftX}px`;
+                        line.style.top = `${parentPos.y + 60}px`;
+                        chartContainer.appendChild(line);
                     }
-                });
-            });
+                }
+            }
         }
 
         function showEditIboModal(iboId, parentId = null) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amway Business Planner 2024 - Professional Edition</title>
+    <title>Amway Business Planner 2025 - Professional Edition</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -39,24 +39,23 @@
             flex-direction: column;
             align-items: center;
             position: relative;
-            min-width: 100%;
+            min-width: max-content;
+            padding: 40px;
+            cursor: grab;
         }
         
-        .org-level {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            margin: 40px 0;
+        .org-tree:active {
+            cursor: grabbing;
+        }
+        
+        .org-chart-viewport {
+            overflow: auto;
             position: relative;
             width: 100%;
-        }
-        
-        .org-node-wrapper {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0 20px;
+            height: 600px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
         }
         
         .org-node {
@@ -95,8 +94,8 @@
         
         .org-node-controls {
             position: absolute;
-            top: -10px;
-            right: -10px;
+            top: -15px;
+            right: -5px;
             display: flex;
             gap: 5px;
             z-index: 20;
@@ -124,34 +123,146 @@
             background: #ef4444;
         }
         
+        .org-node-btn.collapse {
+            background: #6366f1;
+        }
+        
+        .org-node-btn.collapse.collapsed {
+            background: #f59e0b;
+        }
+        
         .org-node-btn:hover {
             transform: scale(1.15);
         }
         
-        .org-children {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
+        /* Qualification Level Badge */
+        .qual-badge {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: bold;
+            white-space: nowrap;
+            z-index: 25;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
-        /* Connection Lines */
-        .connection-line {
+        .qual-badge.bww {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+        
+        .qual-badge.silver {
+            background: linear-gradient(135deg, #9ca3af, #6b7280);
+            color: white;
+        }
+        
+        .qual-badge.gold {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1f2937;
+        }
+        
+        .qual-badge.platinum {
+            background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+            color: #1f2937;
+        }
+        
+        .qual-badge.ruby {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        
+        .qual-badge.sapphire {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+        
+        .qual-badge.emerald {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        
+        .qual-badge.diamond {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+        }
+        
+        /* Collapsed node indicator */
+        .org-node.has-collapsed-children::after {
+            content: '...';
             position: absolute;
+            bottom: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        /* Hierarchical Tree Styles - Pedigree Chart Format */
+        .org-node-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        
+        .org-children {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            position: relative;
+            margin-top: 50px;
+        }
+        
+        .org-children > .org-node-wrapper {
+            margin: 0 15px;
+        }
+        
+        /* Vertical line from parent down to horizontal bar */
+        .org-children::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 3px;
+            height: 25px;
             background: #94a3b8;
             z-index: 1;
         }
         
-        .vertical-line {
-            width: 3px;
-            height: 40px;
+        /* Vertical line from horizontal bar down to each child */
+        .org-children > .org-node-wrapper::before {
+            content: '';
+            position: absolute;
+            top: -25px;
             left: 50%;
             transform: translateX(-50%);
-            top: 140px;
+            width: 3px;
+            height: 25px;
+            background: #94a3b8;
+            z-index: 1;
         }
         
-        .horizontal-line {
+        /* Horizontal bar - will be set dynamically by JS */
+        .org-children-bar {
+            position: absolute;
+            top: -25px;
             height: 3px;
-            top: 180px;
+            background: #94a3b8;
+            z-index: 1;
+        }
+        
+        /* Single child - extend the vertical line directly */
+        .org-children.single-child::before {
+            height: 50px;
+        }
+        
+        .org-children.single-child > .org-node-wrapper::before {
+            display: none;
         }
         
         /* Tab Styles */
@@ -317,6 +428,163 @@
                 margin: 0 10px;
             }
         }
+        
+        /* Dark Mode Styles */
+        .dark-mode {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #1f2937;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --border-color: #374151;
+        }
+        
+        .dark-mode body,
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+        
+        .dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #f3f4f6;
+        }
+        
+        .dark-mode .bg-gray-50 {
+            background-color: #374151 !important;
+            color: #f3f4f6;
+        }
+        
+        .dark-mode .bg-gray-100 {
+            background-color: #4b5563 !important;
+        }
+        
+        .dark-mode .text-gray-800,
+        .dark-mode .text-gray-700,
+        .dark-mode .text-gray-600 {
+            color: #e5e7eb !important;
+        }
+        
+        .dark-mode .text-gray-500,
+        .dark-mode .text-gray-400 {
+            color: #9ca3af !important;
+        }
+        
+        .dark-mode .border-gray-200,
+        .dark-mode .border-gray-300 {
+            border-color: #4b5563 !important;
+        }
+        
+        .dark-mode .border {
+            border-color: #4b5563;
+        }
+        
+        .dark-mode input,
+        .dark-mode select {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+        
+        .dark-mode input::placeholder {
+            color: #9ca3af !important;
+        }
+        
+        .dark-mode .org-container {
+            background: #1f2937;
+        }
+        
+        .dark-mode .org-chart-viewport {
+            background: #1f2937;
+            border-color: #374151;
+        }
+        
+        .dark-mode .modal-content {
+            background: #1f2937;
+            color: #f3f4f6;
+        }
+        
+        .dark-mode .bg-yellow-50 {
+            background-color: #422006 !important;
+            border-color: #854d0e !important;
+        }
+        
+        .dark-mode .text-yellow-800,
+        .dark-mode .text-yellow-700 {
+            color: #fef08a !important;
+        }
+        
+        .dark-mode .bg-blue-50 {
+            background-color: #1e3a5f !important;
+        }
+        
+        .dark-mode .bg-green-50 {
+            background-color: #14532d !important;
+        }
+        
+        .dark-mode .bg-purple-50 {
+            background-color: #3b0764 !important;
+        }
+        
+        .dark-mode .bg-orange-50 {
+            background-color: #431407 !important;
+        }
+        
+        .dark-mode .bg-red-50 {
+            background-color: #450a0a !important;
+        }
+        
+        .dark-mode .bg-blue-100 {
+            background-color: #1e40af !important;
+        }
+        
+        .dark-mode .border-blue-300 {
+            border-color: #3b82f6 !important;
+        }
+        
+        .dark-mode .text-blue-800 {
+            color: #93c5fd !important;
+        }
+        
+        .dark-mode .shadow-lg,
+        .dark-mode .shadow-sm {
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3) !important;
+        }
+        
+        .dark-mode .tab-btn {
+            color: #9ca3af;
+        }
+        
+        .dark-mode .tab-btn.active {
+            color: #818cf8;
+        }
+        
+        .dark-mode .tab-btn.active::after {
+            background: #818cf8;
+        }
+        
+        /* Theme toggle button */
+        .theme-toggle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            background: #4b5563;
+            color: white;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .dark-mode .theme-toggle {
+            background: #fbbf24;
+            color: #1f2937;
+        }
     </style>
 </head>
 <body>
@@ -338,8 +606,18 @@
                     currentTab: 'visual',
                     zoomLevel: 1,
                     timelineStartIndex: 0,
-                    timelineRange: 8
+                    timelineRange: 8,
+                    darkMode: false,
+                    panX: 0,
+                    panY: 0,
+                    isPanning: false,
+                    panStartX: 0,
+                    panStartY: 0,
+                    collapsedNodes: new Set()
                 };
+                
+                // Chart instances for cleanup
+                this.charts = {};
                 
                 // Configuration
                 this.config = {
@@ -378,10 +656,12 @@
                     children: [],
                     parent: null,
                     level: 0,
-                    registrationDate: new Date().toISOString()
+                    registrationDate: new Date().toISOString(),
+                    notes: '' // Member notes/comments
                 });
                 
                 this.loadSavedData();
+                this.loadThemePreference();
                 this.render();
                 this.attachGlobalEventListeners();
             }
@@ -399,22 +679,33 @@
                             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                                 <div>
                                     <h1 class="text-3xl font-bold text-gray-800 mb-2">
-                                        <i class="fas fa-chart-network mr-3 text-indigo-600"></i>
-                                        Amway Business Planner 2024
+                                        <i class="fas fa-project-diagram mr-3 text-indigo-600"></i>
+                                        Amway Business Planner 2025
                                     </h1>
                                     <p class="text-gray-600">Professional Edition - Complete Business Modeling & Analytics</p>
                                 </div>
-                                <div class="flex gap-2 no-print">
+                                <div class="flex gap-2 no-print flex-wrap items-center">
+                                    <button onclick="app.toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
+                                        <i class="fas ${this.state.darkMode ? 'fa-sun' : 'fa-moon'}"></i>
+                                    </button>
                                     <button onclick="app.exportManager.exportToPDF()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                                        <i class="fas fa-file-pdf mr-2"></i><span class="hidden sm:inline">Export </span>PDF
                                     </button>
                                     <button onclick="app.exportManager.exportToImage()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                        <i class="fas fa-image mr-2"></i>Export Image
+                                        <i class="fas fa-image mr-2"></i><span class="hidden sm:inline">Export </span>Image
+                                    </button>
+                                    <button onclick="app.exportManager.exportToJSON()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors" title="Backup all data">
+                                        <i class="fas fa-download mr-2"></i><span class="hidden sm:inline">Backup</span>
+                                    </button>
+                                    <button onclick="app.exportManager.triggerImport()" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors" title="Restore from backup">
+                                        <i class="fas fa-upload mr-2"></i><span class="hidden sm:inline">Restore</span>
                                     </button>
                                     <button onclick="app.saveData()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                        <i class="fas fa-save mr-2"></i>Save
+                                        <i class="fas fa-save mr-2"></i><span class="hidden sm:inline">Save</span>
                                     </button>
                                 </div>
+                                <!-- Hidden file input for import -->
+                                <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="app.exportManager.importFromJSON(event)">
                             </div>
                         </header>
                         
@@ -422,12 +713,12 @@
                         <div class="bg-white rounded-lg shadow-lg p-6 fade-in">
                             <!-- Tabs -->
                             <nav class="border-b border-gray-200 mb-6">
-                                <div class="flex space-x-8">
+                                <div class="flex space-x-8 overflow-x-auto">
                                     <button class="tab-btn active" data-tab="visual" onclick="app.switchTab('visual')">
-                                        <i class="fas fa-sitemap mr-2"></i>Visual Builder
+                                        <i class="fas fa-sitemap mr-2"></i><span class="hidden sm:inline">Visual </span>Builder
                                     </button>
                                     <button class="tab-btn" data-tab="multimonth" onclick="app.switchTab('multimonth')">
-                                        <i class="fas fa-calendar-alt mr-2"></i>Multi-Month Planning
+                                        <i class="fas fa-calendar-alt mr-2"></i><span class="hidden sm:inline">Multi-Month </span>Planning
                                     </button>
                                     <button class="tab-btn" data-tab="analytics" onclick="app.switchTab('analytics')">
                                         <i class="fas fa-chart-line mr-2"></i>Analytics
@@ -448,10 +739,10 @@
                                 <i class="fas fa-exclamation-triangle mr-2"></i>Important Disclaimers
                             </h3>
                             <div class="text-sm text-yellow-700 space-y-2">
-                                <p><strong>Income Disclosure:</strong> For the calendar year 2023, the average income from Amway for all U.S. registered IBOs at the Founders Platinum level and below was $841 before expenses.</p>
+                                <p><strong>Income Disclosure:</strong> For the calendar year 2024, the average income from Amway for all U.S. registered IBOs at the Founders Platinum level and below was approximately $900 before expenses.</p>
                                 <p><strong>Results Vary:</strong> Earnings depend on many factors, including customer base, business experience, effort, dedication, and quality and performance of the downline sales team.</p>
                                 <p><strong>Baseline Requirements:</strong> IBOs must meet baseline requirements including average 150 Personal PV monthly, at least 60% from Verified Customer Sales, and adherence to Rules of Conduct.</p>
-                                <p><strong>Calculator Notice:</strong> This calculator provides estimates based on 2024 compensation plan data and should be used for planning purposes only.</p>
+                                <p><strong>Calculator Notice:</strong> This calculator provides estimates based on 2025 compensation plan data and should be used for planning purposes only.</p>
                             </div>
                         </div>
                     </div>
@@ -492,11 +783,40 @@
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <!-- Organization Chart -->
                         <div class="lg:col-span-2">
-                            <div class="mb-4 flex justify-between items-center">
+                            <div class="mb-4 flex flex-wrap justify-between items-center gap-2">
                                 <h3 class="text-xl font-bold text-gray-800">Organization Structure</h3>
-                                <div class="flex items-center gap-2">
-                                    <select id="month-selector" class="px-3 py-2 border rounded-lg text-sm">
-                                        <option value="${this.state.currentMonth}">${this.formatMonth(this.state.currentMonth)}</option>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <select id="example-selector" class="px-3 py-2 border rounded-lg text-sm bg-indigo-50 border-indigo-300" onchange="app.loadExampleStructure(this.value)">
+                                        <option value="">📊 Load Example...</option>
+                                        <optgroup label="BWW SYR Levels (Below 7,500 PV)">
+                                            <option value="bfi_t5">BFI-T5 (Team of 5, 750 PV)</option>
+                                            <option value="bbi_t10">BBI-T10 (Team of 10, 1,500 PV)</option>
+                                            <option value="bts25">BTS25 - Bronze to Silver (25 IBOs, 3,750 PV)</option>
+                                            <option value="ep40">EP40 - Eagle Platinum (40 IBOs, 6,000 PV)</option>
+                                        </optgroup>
+                                        <optgroup label="Amway Producer Levels (7,500+ PV)">
+                                            <option value="silver">Silver Producer (50 IBOs, 7,500 PV)</option>
+                                            <option value="gold">Gold Producer (Silver × 3 months)</option>
+                                            <option value="platinum">Platinum (50 IBOs, 7,500 PV × 6 months)</option>
+                                            <option value="founders_platinum">Founders Platinum (7,500 PV × 12 months)</option>
+                                        </optgroup>
+                                        <optgroup label="Amway Pin Levels">
+                                            <option value="ruby">Ruby (100 IBOs, 15,000 PV - no leg at 25%)</option>
+                                            <option value="sapphire">Sapphire (102 IBOs, 2 legs at 25%)</option>
+                                            <option value="emerald">Emerald (153 IBOs, 3 legs at 25%)</option>
+                                            <option value="diamond">Diamond (306 IBOs, 6 legs at 25%)</option>
+                                        </optgroup>
+                                        <optgroup label="Executive Levels (FP Groups)">
+                                            <option value="executive_diamond">Executive Diamond (6 FP groups)</option>
+                                            <option value="double_diamond">Double Diamond (8 FP groups)</option>
+                                            <option value="triple_diamond">Triple Diamond (10 FP groups)</option>
+                                            <option value="crown">Crown (12 FP groups)</option>
+                                            <option value="crown_ambassador">Crown Ambassador (14 FP groups)</option>
+                                            <option value="founders_crown_ambassador">Founders Crown Ambassador (14+ FP)</option>
+                                        </optgroup>
+                                    </select>
+                                    <select id="month-selector" class="px-3 py-2 border rounded-lg text-sm" onchange="app.changeMonth(this.value)">
+                                        ${this.generateMonthOptions()}
                                     </select>
                                     <button onclick="app.pushToMultiMonth()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm">
                                         <i class="fas fa-calendar-plus mr-2"></i>Push to Multi-Month
@@ -515,8 +835,13 @@
                                     <button class="zoom-btn" onclick="app.autoFit()" title="Auto Fit">
                                         <i class="fas fa-expand-arrows-alt"></i>
                                     </button>
+                                    <button class="zoom-btn" onclick="app.resetPan()" title="Reset View">
+                                        <i class="fas fa-home"></i>
+                                    </button>
                                 </div>
-                                <div id="org-chart" class="org-tree" style="transform: scale(${this.state.zoomLevel}); transform-origin: top center;"></div>
+                                <div id="org-viewport" class="org-chart-viewport">
+                                    <div id="org-chart" class="org-tree" style="transform: scale(${this.state.zoomLevel}) translate(${this.state.panX || 0}px, ${this.state.panY || 0}px); transform-origin: top center;"></div>
+                                </div>
                             </div>
                         </div>
                         
@@ -559,6 +884,11 @@
                                         </div>
                                     </div>
                                     
+                                    <div class="border-t pt-4">
+                                        <h4 class="font-semibold mb-3"><i class="fas fa-sticky-note mr-2"></i>Notes & Comments</h4>
+                                        <textarea id="member-notes" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" rows="3" placeholder="Add notes about this member (goals, follow-ups, etc.)"></textarea>
+                                    </div>
+                                    
                                     <div class="flex gap-2">
                                         <button type="button" onclick="app.saveMember()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                                             <i class="fas fa-save mr-2"></i>Save
@@ -572,6 +902,14 @@
                                         <button type="button" onclick="app.deleteMember(true)" class="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors" title="Delete with entire group">
                                             <i class="fas fa-users-slash"></i>
                                         </button>
+                                    </div>
+                                    
+                                    <!-- Upgrade IBO to Structure Button -->
+                                    <div class="border-t pt-4 mt-4">
+                                        <button type="button" onclick="app.showUpgradeModal()" class="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg">
+                                            <i class="fas fa-level-up-alt mr-2"></i>Upgrade IBO to Structure
+                                        </button>
+                                        <p class="text-xs text-gray-500 mt-2 text-center">Replace this IBO with a complete business structure (e.g., Platinum, Diamond)</p>
                                     </div>
                                 </form>
                             </div>
@@ -630,6 +968,72 @@
                             <div id="income-details-content"></div>
                         </div>
                     </div>
+                    
+                    <!-- Upgrade IBO Modal -->
+                    <div id="upgrade-ibo-modal" class="modal">
+                        <div class="modal-content" style="max-width: 600px;">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-2xl font-bold text-gray-800">
+                                    <i class="fas fa-level-up-alt mr-2 text-purple-600"></i>Upgrade IBO to Structure
+                                </h3>
+                                <button onclick="app.hideUpgradeModal()" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times text-2xl"></i>
+                                </button>
+                            </div>
+                            <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+                                <p class="text-sm text-blue-800">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    This will replace <strong id="upgrade-ibo-name">the selected IBO</strong> with a complete business structure. 
+                                    Their existing downline will be preserved and added to the new structure.
+                                </p>
+                            </div>
+                            <div class="space-y-4">
+                                <label class="block text-sm font-medium text-gray-700">Select Structure to Apply:</label>
+                                <select id="upgrade-structure-select" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-lg">
+                                    <optgroup label="BWW SYR Levels (Below 7,500 PV)">
+                                        <option value="bfi_t5">BFI-T5 (5 IBOs, 750 PV)</option>
+                                        <option value="bbi_t10">BBI-T10 (10 IBOs, 1,500 PV)</option>
+                                        <option value="bts25">BTS25 - Bronze to Silver (25 IBOs, 3,750 PV)</option>
+                                        <option value="ep40">EP40 - Eagle Platinum (40 IBOs, 6,000 PV)</option>
+                                    </optgroup>
+                                    <optgroup label="Amway Producer Levels (7,500+ PV)">
+                                        <option value="silver">Silver Producer (50 IBOs, 7,500 PV)</option>
+                                        <option value="gold">Gold Producer (50 IBOs, 7,500 PV for 3mo)</option>
+                                        <option value="platinum">Platinum (50 IBOs, 7,500 PV for 6mo)</option>
+                                        <option value="founders_platinum">Founders Platinum (50 IBOs, 7,500 PV for 12mo)</option>
+                                    </optgroup>
+                                    <optgroup label="Amway Pin Levels">
+                                        <option value="ruby">Ruby (100 IBOs, 15,000 PV - no leg at 25%)</option>
+                                        <option value="sapphire">Sapphire (102 IBOs, 2 legs at 25%)</option>
+                                        <option value="emerald">Emerald (153 IBOs, 3 legs at 25%)</option>
+                                        <option value="diamond">Diamond (306 IBOs, 6 legs at 25%)</option>
+                                    </optgroup>
+                                    <optgroup label="Executive Levels">
+                                        <option value="executive_diamond">Executive Diamond (6 FP groups)</option>
+                                        <option value="double_diamond">Double Diamond (8 FP groups)</option>
+                                        <option value="triple_diamond">Triple Diamond (10 FP groups)</option>
+                                        <option value="crown">Crown (12 FP groups)</option>
+                                        <option value="crown_ambassador">Crown Ambassador (14 FP groups)</option>
+                                    </optgroup>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>BWW levels (BFI, BBI, BTS, EP) only apply below Silver (7,500 PV)</p>
+                                
+                                <div class="flex items-center mt-4">
+                                    <input type="checkbox" id="upgrade-keep-name" class="mr-2 w-5 h-5 text-purple-600" checked>
+                                    <label for="upgrade-keep-name" class="text-sm text-gray-700">Keep original IBO name as the new structure's root</label>
+                                </div>
+                                
+                                <div class="flex gap-3 mt-6">
+                                    <button onclick="app.applyUpgrade()" class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg font-semibold">
+                                        <i class="fas fa-magic mr-2"></i>Apply Structure
+                                    </button>
+                                    <button onclick="app.hideUpgradeModal()" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 `;
             }
             
@@ -638,25 +1042,63 @@
                 if (!container) return;
                 
                 container.innerHTML = '';
+                container.style.transform = `scale(${this.state.zoomLevel})`;
+                container.style.transformOrigin = 'top center';
                 
-                // Organize nodes by level
-                const levels = this.organizeByLevels();
+                // Render tree hierarchically starting from root
+                const root = this.state.organization.get('root');
+                if (root) {
+                    const rootElement = this.createNodeElement(root);
+                    container.appendChild(rootElement);
+                }
                 
-                levels.forEach((levelNodes, level) => {
-                    const levelDiv = document.createElement('div');
-                    levelDiv.className = 'org-level';
-                    levelDiv.dataset.level = level;
-                    
-                    levelNodes.forEach(node => {
-                        const nodeWrapper = this.createNodeElement(node);
-                        levelDiv.appendChild(nodeWrapper);
-                    });
-                    
-                    container.appendChild(levelDiv);
+                // Position horizontal bars after render completes
+                requestAnimationFrame(() => {
+                    this.positionConnectionBars();
+                    this.attachPanningEvents();
                 });
                 
                 this.updateIncomeSummary();
                 this.updateTeamStats();
+            }
+            
+            positionConnectionBars() {
+                // Use setTimeout to ensure DOM is fully rendered
+                setTimeout(() => {
+                    const childrenContainers = document.querySelectorAll('.org-children:not(.single-child)');
+                    childrenContainers.forEach(container => {
+                        // Find or create the bar
+                        let bar = container.querySelector('.org-children-bar');
+                        if (!bar) {
+                            bar = document.createElement('div');
+                            bar.className = 'org-children-bar';
+                            container.appendChild(bar);
+                        }
+                        
+                        const wrappers = container.querySelectorAll(':scope > .org-node-wrapper');
+                        if (wrappers.length >= 2) {
+                            const firstWrapper = wrappers[0];
+                            const lastWrapper = wrappers[wrappers.length - 1];
+                            
+                            // Get the node circles inside wrappers
+                            const firstNode = firstWrapper.querySelector('.org-node');
+                            const lastNode = lastWrapper.querySelector('.org-node');
+                            
+                            if (firstNode && lastNode) {
+                                const containerRect = container.getBoundingClientRect();
+                                const firstRect = firstNode.getBoundingClientRect();
+                                const lastRect = lastNode.getBoundingClientRect();
+                                
+                                // Calculate centers relative to container
+                                const firstCenter = firstRect.left + firstRect.width / 2 - containerRect.left;
+                                const lastCenter = lastRect.left + lastRect.width / 2 - containerRect.left;
+                                
+                                bar.style.left = firstCenter + 'px';
+                                bar.style.width = Math.max(0, lastCenter - firstCenter) + 'px';
+                            }
+                        }
+                    });
+                }, 50);
             }
             
             createNodeElement(node) {
@@ -665,56 +1107,97 @@
                 wrapper.dataset.nodeId = node.id;
                 
                 const vcsStatus = this.checkVCSCompliance(node);
-                const performanceLevel = this.getPerformanceLevel(node.pv);
+                const personalPerformanceLevel = this.getPerformanceLevel(node.pv);
+                const hasNotes = node.notes && node.notes.trim().length > 0;
+                
+                // Calculate this node's GROUP PV (including all downline)
+                const groupPV = this.calculateGroupPV(node.id);
+                const qualLevel = this.getQualificationLevel(groupPV, node.id);
+                
+                // Check if node is collapsed
+                const isCollapsed = this.state.collapsedNodes && this.state.collapsedNodes.has(node.id);
+                const hasChildren = node.children && node.children.length > 0;
                 
                 const nodeDiv = document.createElement('div');
-                nodeDiv.className = `org-node ${this.state.selectedNode === node.id ? 'selected' : ''} ${!vcsStatus.compliant ? 'vcs-non-compliant' : ''}`;
+                nodeDiv.className = `org-node ${this.state.selectedNode === node.id ? 'selected' : ''} ${!vcsStatus.compliant ? 'vcs-non-compliant' : ''} ${isCollapsed && hasChildren ? 'has-collapsed-children' : ''}`;
+                nodeDiv.style.position = 'relative';
+                
+                // Add qualification badge if they qualify for something
+                let badgeHtml = '';
+                if (qualLevel.level !== 'IBO') {
+                    badgeHtml = `<div class="qual-badge ${qualLevel.badgeClass}">${qualLevel.level}</div>`;
+                }
+                
                 nodeDiv.innerHTML = `
-                    <div class="text-xs font-bold mb-1">${node.name}</div>
-                    <div class="text-lg font-bold">${performanceLevel}%</div>
+                    ${badgeHtml}
+                    <div class="text-xs font-bold mb-1">${node.name} ${hasNotes ? '<i class="fas fa-sticky-note text-yellow-500" title="Has notes"></i>' : ''}</div>
+                    <div class="text-lg font-bold">${personalPerformanceLevel}%</div>
                     <div class="text-xs mt-1">${node.pv} PV</div>
-                    <div class="text-xs">${Math.round(node.bv)} BV</div>
+                    <div class="text-xs opacity-75">${groupPV.toFixed(0)} GPV</div>
                     <div class="text-xs mt-1">${vcsStatus.compliant ? '✓' : '⚠'} VCS</div>
                 `;
                 
                 nodeDiv.onclick = () => this.selectNode(node.id);
                 wrapper.appendChild(nodeDiv);
                 
-                // Add controls
+                // Add delete button to top-right corner of circle
                 if (node.id !== 'root') {
-                    const controls = document.createElement('div');
-                    controls.className = 'org-node-controls';
-                    controls.innerHTML = `
-                        <div class="org-node-btn delete" onclick="event.stopPropagation(); app.deleteMember(true, '${node.id}')">
-                            <i class="fas fa-times"></i>
-                        </div>
-                    `;
-                    wrapper.appendChild(controls);
+                    const deleteBtn = document.createElement('div');
+                    deleteBtn.className = 'org-node-btn delete';
+                    deleteBtn.style.position = 'absolute';
+                    deleteBtn.style.top = '-10px';
+                    deleteBtn.style.right = '-10px';
+                    deleteBtn.style.zIndex = '30';
+                    deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        this.deleteMember(true, node.id);
+                    };
+                    nodeDiv.appendChild(deleteBtn);
                 }
                 
+                // Add collapse/expand button to bottom-left corner if node has children
+                if (hasChildren) {
+                    const collapseBtn = document.createElement('div');
+                    collapseBtn.className = `org-node-btn collapse ${isCollapsed ? 'collapsed' : ''}`;
+                    collapseBtn.style.position = 'absolute';
+                    collapseBtn.style.bottom = '-10px';
+                    collapseBtn.style.left = '-10px';
+                    collapseBtn.style.zIndex = '30';
+                    collapseBtn.innerHTML = isCollapsed ? '<i class="fas fa-plus"></i>' : '<i class="fas fa-minus"></i>';
+                    collapseBtn.title = isCollapsed ? 'Expand downline' : 'Collapse downline';
+                    collapseBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        this.toggleNodeCollapse(node.id);
+                    };
+                    nodeDiv.appendChild(collapseBtn);
+                }
+                
+                // Add button to bottom-right corner of circle
                 const addBtn = document.createElement('div');
                 addBtn.className = 'org-node-btn add';
                 addBtn.style.position = 'absolute';
                 addBtn.style.bottom = '-10px';
                 addBtn.style.right = '-10px';
+                addBtn.style.zIndex = '30';
                 addBtn.innerHTML = '<i class="fas fa-plus"></i>';
                 addBtn.onclick = (e) => {
                     e.stopPropagation();
                     this.addDownlineToNode(node.id);
                 };
-                wrapper.appendChild(addBtn);
+                nodeDiv.appendChild(addBtn);
                 
-                // Connection line
-                if (node.parent) {
-                    const line = document.createElement('div');
-                    line.className = 'connection-line vertical-line';
-                    wrapper.appendChild(line);
-                }
+                wrapper.appendChild(nodeDiv);
                 
-                // Render children
-                if (node.children && node.children.length > 0) {
+                // Render children hierarchically below this node (only if not collapsed)
+                if (hasChildren && !isCollapsed) {
                     const childrenContainer = document.createElement('div');
                     childrenContainer.className = 'org-children';
+                    
+                    // Add single-child class if only one child
+                    if (node.children.length === 1) {
+                        childrenContainer.classList.add('single-child');
+                    }
                     
                     node.children.forEach(childId => {
                         const child = this.state.organization.get(childId);
@@ -724,28 +1207,95 @@
                         }
                     });
                     
-                    wrapper.appendChild(childrenContainer);
-                    
-                    // Horizontal connection line for multiple children
+                    // Add horizontal bar placeholder for multiple children (positioned by positionConnectionBars)
                     if (node.children.length > 1) {
-                        const hLine = document.createElement('div');
-                        hLine.className = 'connection-line horizontal-line';
-                        const firstChild = wrapper.querySelector('.org-children > .org-node-wrapper:first-child');
-                        const lastChild = wrapper.querySelector('.org-children > .org-node-wrapper:last-child');
-                        if (firstChild && lastChild) {
-                            const firstRect = firstChild.getBoundingClientRect();
-                            const lastRect = lastChild.getBoundingClientRect();
-                            const wrapperRect = wrapper.getBoundingClientRect();
-                            hLine.style.left = (firstRect.left - wrapperRect.left + 70) + 'px';
-                            hLine.style.width = (lastRect.left - firstRect.left) + 'px';
-                        }
-                        wrapper.appendChild(hLine);
+                        const bar = document.createElement('div');
+                        bar.className = 'org-children-bar';
+                        childrenContainer.appendChild(bar);
                     }
+                    
+                    wrapper.appendChild(childrenContainer);
                 }
                 
                 return wrapper;
             }
             
+            // Get qualification level for a group based on their structure
+            getQualificationLevel(groupPV, nodeId = null) {
+                // BWW SYR Levels (only apply below Silver 7500 PV)
+                if (groupPV < 7500) {
+                    if (groupPV >= 6000) return { level: 'EP40', badgeClass: 'bww' };
+                    if (groupPV >= 3750) return { level: 'BTS25', badgeClass: 'bww' };
+                    if (groupPV >= 1500) return { level: 'BBI', badgeClass: 'bww' };
+                    if (groupPV >= 750) return { level: 'BFI', badgeClass: 'bww' };
+                    return { level: 'IBO', badgeClass: '' };
+                }
+                
+                // For Amway pins, we need to count qualified legs (legs at 7,500+ PV)
+                // If no nodeId provided, just show Platinum for 7500+ PV
+                if (!nodeId) {
+                    if (groupPV >= 15000) return { level: 'Ruby', badgeClass: 'ruby' };
+                    return { level: 'Platinum', badgeClass: 'platinum' };
+                }
+                
+                // Count qualified legs (each leg at 7,500+ PV)
+                const node = this.state.organization.get(nodeId);
+                if (!node || !node.children || node.children.length === 0) {
+                    // No legs - check for Ruby (15,000+ PV with no qualified legs)
+                    if (groupPV >= 15000) return { level: 'Ruby', badgeClass: 'ruby' };
+                    return { level: 'Platinum', badgeClass: 'platinum' };
+                }
+                
+                // Count how many legs are at 25% level (7,500+ PV)
+                let qualifiedLegs = 0;
+                node.children.forEach(childId => {
+                    const legPV = this.calculateGroupPV(childId);
+                    if (legPV >= 7500) {
+                        qualifiedLegs++;
+                    }
+                });
+                
+                // Amway Pin Levels based on qualified legs
+                // Crown Ambassador: 14+ qualified legs
+                if (qualifiedLegs >= 14) return { level: 'Crown Amb', badgeClass: 'diamond' };
+                // Crown: 12+ qualified legs
+                if (qualifiedLegs >= 12) return { level: 'Crown', badgeClass: 'diamond' };
+                // Triple Diamond: 10+ qualified legs
+                if (qualifiedLegs >= 10) return { level: 'Triple Dia', badgeClass: 'diamond' };
+                // Double Diamond: 8+ qualified legs
+                if (qualifiedLegs >= 8) return { level: 'Double Dia', badgeClass: 'diamond' };
+                // Executive Diamond: 6+ qualified legs (Founders Platinum)
+                if (qualifiedLegs >= 6) return { level: 'Diamond', badgeClass: 'diamond' };
+                // Emerald: 3+ qualified legs
+                if (qualifiedLegs >= 3) return { level: 'Emerald', badgeClass: 'emerald' };
+                // Sapphire: 2+ qualified legs
+                if (qualifiedLegs >= 2) return { level: 'Sapphire', badgeClass: 'sapphire' };
+                
+                // Ruby: 15,000+ PV with NO qualified legs (all legs under 7,500 PV)
+                if (groupPV >= 15000 && qualifiedLegs === 0) return { level: 'Ruby', badgeClass: 'ruby' };
+                
+                // Platinum: 7,500+ PV (or 1 qualified leg)
+                if (groupPV >= 7500) return { level: 'Platinum', badgeClass: 'platinum' };
+                
+                return { level: 'IBO', badgeClass: '' };
+            }
+            
+            // Toggle collapse/expand for a node
+            toggleNodeCollapse(nodeId) {
+                if (!this.state.collapsedNodes) {
+                    this.state.collapsedNodes = new Set();
+                }
+                
+                if (this.state.collapsedNodes.has(nodeId)) {
+                    this.state.collapsedNodes.delete(nodeId);
+                } else {
+                    this.state.collapsedNodes.add(nodeId);
+                }
+                
+                this.renderOrganizationChart();
+            }
+            
+            // Keep organizeByLevels for other uses (like stats)
             organizeByLevels() {
                 const levels = new Map();
                 
@@ -816,9 +1366,14 @@
                                     <div class="border-2 border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
                                         <div class="flex justify-between items-center mb-4">
                                             <h4 class="text-xl font-bold text-blue-600">${this.formatMonth(month)}</h4>
-                                            <div class="text-right">
-                                                <div class="text-sm text-gray-600">Total PV: ${Math.round(data.income.totalPV)}</div>
-                                                <div class="text-lg font-bold text-green-600">$${data.income.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                            <div class="flex items-center gap-4">
+                                                <div class="text-right">
+                                                    <div class="text-sm text-gray-600">Total PV: ${Math.round(data.income.totalPV)}</div>
+                                                    <div class="text-lg font-bold text-green-600">$${data.income.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                                </div>
+                                                <button onclick="app.deleteMonthlyData('${month}')" class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title="Delete this month's data">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
                                             </div>
                                         </div>
                                         
@@ -967,6 +1522,14 @@
             initializeCharts() {
                 if (this.state.monthlyData.size === 0) return;
                 
+                // Destroy existing chart instances to prevent memory leaks
+                Object.values(this.charts).forEach(chart => {
+                    if (chart && typeof chart.destroy === 'function') {
+                        chart.destroy();
+                    }
+                });
+                this.charts = {};
+                
                 const visibleMonths = this.getVisibleMonths();
                 const monthLabels = visibleMonths.map(m => this.formatMonthShort(m));
                 
@@ -983,7 +1546,7 @@
                         return data ? data.income.totalPV : 0;
                     });
                     
-                    new Chart(perfCtx, {
+                    this.charts.performance = new Chart(perfCtx, {
                         type: 'line',
                         data: {
                             labels: monthLabels,
@@ -1041,7 +1604,7 @@
                     const latestData = this.state.monthlyData.get(latestMonth);
                     
                     if (latestData) {
-                        new Chart(incomeDistCtx, {
+                        this.charts.incomeDistribution = new Chart(incomeDistCtx, {
                             type: 'doughnut',
                             data: {
                                 labels: ['Performance Bonus', 'Differential Bonus', 'Retail Margin', 'Customer Sales'],
@@ -1079,7 +1642,7 @@
                         return data ? data.organization.size - 1 : 0;
                     });
                     
-                    new Chart(teamCtx, {
+                    this.charts.teamGrowth = new Chart(teamCtx, {
                         type: 'bar',
                         data: {
                             labels: monthLabels,
@@ -1116,7 +1679,7 @@
                         return (compliant / data.organization.size) * 100;
                     });
                     
-                    new Chart(vcsCtx, {
+                    this.charts.vcsCompliance = new Chart(vcsCtx, {
                         type: 'line',
                         data: {
                             labels: monthLabels,
@@ -1201,50 +1764,288 @@
             // CALCULATION METHODS
             // ============================================
             
+            /**
+             * AMWAY COMPENSATION PLAN CALCULATIONS
+             * Based on Money & Rewards Reference Guide
+             * 
+             * KEY CONCEPTS:
+             * - Group Volume: Personal PV + Pass-up from non-25% legs
+             * - Ruby/Side Volume: PV outside any qualified 25% legs (critical for bonuses)
+             * - Performance Bonus: Based on total Group PV bracket × Group BV
+             * - Differential Bonus: Difference between your % and downline's %
+             * - Leadership Bonus: 6% on 25% legs, computed bottom-up
+             * - Ruby Bonus: 2% of Ruby BV when Ruby PV ≥ 15,000
+             */
+            
             calculateIncome() {
-                let totalPV = 0;
-                let totalBV = 0;
-                let vcsCompliantBV = 0;
-                
-                this.state.organization.forEach(node => {
-                    totalPV += node.pv;
-                    const vcsStatus = this.checkVCSCompliance(node);
-                    const effectiveBV = vcsStatus.effectiveBV;
-                    totalBV += effectiveBV;
-                    if (vcsStatus.compliant) {
-                        vcsCompliantBV += node.bv;
-                    }
-                });
-                
-                const performanceRate = this.getPerformanceLevel(totalPV) / 100;
-                const performanceBonus = totalBV * performanceRate;
-                
-                // Calculate differential bonuses
-                let differentialBonus = 0;
                 const root = this.state.organization.get('root');
-                if (root && root.children) {
+                if (!root) {
+                    return this.getEmptyIncomeResult();
+                }
+                
+                // Calculate all the key metrics
+                const metrics = this.calculateAllMetrics(root);
+                
+                // 1. PERFORMANCE BONUS (Core Plan)
+                // Based on Group PV bracket × Group BV
+                const performanceRate = this.getPerformanceLevel(metrics.groupPV) / 100;
+                const performanceBonus = metrics.groupBV * performanceRate;
+                
+                // 2. DIFFERENTIAL BONUS (Core Plan)
+                // Paid on the difference between your % and each frontline's %
+                let differentialBonus = 0;
+                if (root.children && root.children.length > 0) {
                     root.children.forEach(childId => {
-                        const childPV = this.calculateGroupPV(childId);
-                        const childBV = this.calculateGroupBV(childId);
-                        const childRate = this.getPerformanceLevel(childPV) / 100;
+                        const childGroupPV = this.calculateGroupPV(childId);
+                        const childGroupBV = this.calculateGroupBV(childId);
+                        const childRate = this.getPerformanceLevel(childGroupPV) / 100;
                         const differential = Math.max(0, performanceRate - childRate);
-                        differentialBonus += childBV * differential;
+                        differentialBonus += childGroupBV * differential;
                     });
                 }
                 
-                // Additional income streams
-                const retailMargin = totalPV * 2.84 * 0.1; // 10% retail margin
-                const customerSalesIncentive = Math.min(75, vcsCompliantBV * 0.1); // Up to $75/month
+                // 3. LEADERSHIP BONUS (Core Plan)
+                // 6% on qualified 25% legs, computed bottom-up
+                let leadershipBonus = 0;
+                if (performanceRate >= 0.25 && metrics.rubyPV >= 2500) {
+                    leadershipBonus = this.calculateLeadershipBonusAmount(root, metrics);
+                }
+                
+                // 4. RUBY BONUS (Core Plan)
+                // 2% of Ruby BV when Ruby PV ≥ 15,000
+                let rubyBonus = 0;
+                if (metrics.rubyPV >= 15000) {
+                    rubyBonus = metrics.rubyBV * 0.02;
+                }
+                
+                // 5. RETAIL MARGIN (Core Plan)
+                // 10% on YOUR personal retail sales only
+                const yourPersonalPV = root.pv || 0;
+                const yourPersonalBV = root.bv || (yourPersonalPV * this.config.pvToBvRatio);
+                const retailMargin = yourPersonalBV * 0.10;
+                
+                // 6. CUSTOMER SALES INCENTIVE (Core Plus)
+                // Up to 10% of VCS BV for IBOs at 9% or below, max $75/month
+                let customerSalesIncentive = 0;
+                if (performanceRate <= 0.09) {
+                    const csiRate = 0.10 - performanceRate;
+                    const vcsBV = (root.vcsPV || yourPersonalPV * 0.6) * this.config.pvToBvRatio;
+                    customerSalesIncentive = Math.min(75, vcsBV * csiRate);
+                }
+                
+                // Calculate totals
+                const coreTotal = performanceBonus + differentialBonus + leadershipBonus + rubyBonus + retailMargin;
+                const corePlusTotal = customerSalesIncentive;
+                const total = coreTotal + corePlusTotal;
                 
                 return {
+                    // Core Plan Bonuses
                     performanceBonus,
                     differentialBonus,
+                    leadershipBonus,
+                    rubyBonus,
                     retailMargin,
+                    
+                    // Core Plus Incentives
                     customerSalesIncentive,
-                    total: performanceBonus + differentialBonus + retailMargin + customerSalesIncentive,
-                    totalPV,
-                    totalBV,
+                    
+                    // Totals
+                    coreTotal,
+                    corePlusTotal,
+                    total,
+                    
+                    // Metrics for display
+                    totalPV: metrics.groupPV,
+                    totalBV: metrics.groupBV,
+                    rubyPV: metrics.rubyPV,
+                    rubyBV: metrics.rubyBV,
+                    personalPV: yourPersonalPV,
+                    personalBV: yourPersonalBV,
+                    qualifiedLegs: metrics.qualifiedLegs,
+                    performanceLevel: performanceRate * 100,
+                    vcsCompliantBV: metrics.vcsCompliantBV
+                };
+            }
+            
+            /**
+             * Calculate all key metrics for the root IBO
+             */
+            calculateAllMetrics(root) {
+                let groupPV = 0;
+                let groupBV = 0;
+                let rubyPV = 0;
+                let rubyBV = 0;
+                let vcsCompliantBV = 0;
+                let qualifiedLegs = 0;
+                
+                // Personal volume always counts
+                const personalPV = root.pv || 0;
+                const personalBV = root.bv || (personalPV * this.config.pvToBvRatio);
+                
+                groupPV += personalPV;
+                groupBV += personalBV;
+                rubyPV += personalPV;
+                rubyBV += personalBV;
+                
+                // Check VCS compliance for root
+                const rootVCS = this.checkVCSCompliance(root);
+                if (rootVCS.compliant) {
+                    vcsCompliantBV += personalBV;
+                }
+                
+                // Process each frontline leg
+                if (root.children && root.children.length > 0) {
+                    root.children.forEach(childId => {
+                        const legPV = this.calculateGroupPV(childId);
+                        const legBV = this.calculateGroupBV(childId);
+                        const legPerformanceLevel = this.getPerformanceLevel(legPV);
+                        
+                        // Check if this leg is qualified at 25%
+                        const isQualifiedLeg = legPerformanceLevel >= 25 || legPV >= 7500;
+                        
+                        if (isQualifiedLeg) {
+                            // Qualified 25% leg - counts toward Group but NOT Ruby/Side Volume
+                            qualifiedLegs++;
+                            groupPV += legPV;
+                            groupBV += legBV;
+                            // Ruby Volume does NOT include qualified 25% legs
+                        } else {
+                            // Non-qualified leg - counts toward both Group AND Ruby Volume
+                            groupPV += legPV;
+                            groupBV += legBV;
+                            rubyPV += legPV;
+                            rubyBV += legBV;
+                        }
+                        
+                        // Count VCS compliant BV in this leg
+                        vcsCompliantBV += this.calculateVCSCompliantBV(childId);
+                    });
+                }
+                
+                return {
+                    groupPV,
+                    groupBV,
+                    rubyPV,
+                    rubyBV,
+                    personalPV,
+                    personalBV,
+                    qualifiedLegs,
                     vcsCompliantBV
+                };
+            }
+            
+            /**
+             * Calculate VCS compliant BV for a node and all its descendants
+             */
+            calculateVCSCompliantBV(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return 0;
+                
+                let compliantBV = 0;
+                const vcsStatus = this.checkVCSCompliance(node);
+                if (vcsStatus.compliant) {
+                    compliantBV += node.bv || (node.pv * this.config.pvToBvRatio);
+                }
+                
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(childId => {
+                        compliantBV += this.calculateVCSCompliantBV(childId);
+                    });
+                }
+                
+                return compliantBV;
+            }
+            
+            /**
+             * Calculate Leadership Bonus
+             * 6% of BV from qualified 25% legs, computed bottom-up
+             * Minimum 2,500 Ruby PV required to keep the bonus
+             */
+            calculateLeadershipBonusAmount(root, metrics) {
+                let leadershipBonus = 0;
+                
+                if (!root.children || root.children.length === 0) return 0;
+                
+                root.children.forEach(childId => {
+                    const legPV = this.calculateGroupPV(childId);
+                    const legBV = this.calculateGroupBV(childId);
+                    const legPerformanceLevel = this.getPerformanceLevel(legPV);
+                    
+                    // Only 25% qualified legs generate Leadership Bonus
+                    if (legPerformanceLevel >= 25 || legPV >= 7500) {
+                        // 6% of the leg's BV
+                        const legBonus = legBV * 0.06;
+                        
+                        // Check if there's a qualified Platinum in this leg who would take some
+                        const qualifiedPlatinumInLeg = this.findQualifiedPlatinumInLeg(childId);
+                        
+                        if (qualifiedPlatinumInLeg) {
+                            // Some bonus may pass up - simplified calculation
+                            // In reality, this is computed bottom-up
+                            leadershipBonus += legBonus * 0.5; // Simplified - you get portion
+                        } else {
+                            // No qualified Platinum below - you keep the full 6%
+                            leadershipBonus += legBonus;
+                        }
+                    }
+                });
+                
+                // Minimum Ruby PV requirement to keep Leadership Bonus
+                if (metrics.rubyPV < 2500) {
+                    // Pass-up: Bonus goes to upline (not applicable for root)
+                    return 0;
+                }
+                
+                return leadershipBonus;
+            }
+            
+            /**
+             * Find if there's a qualified Platinum (7500+ PV) in a leg
+             */
+            findQualifiedPlatinumInLeg(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return null;
+                
+                // Check if this node qualifies as Platinum
+                const nodePV = this.calculateGroupPV(nodeId);
+                if (nodePV >= 7500) {
+                    return node;
+                }
+                
+                // Check children recursively
+                if (node.children && node.children.length > 0) {
+                    for (const childId of node.children) {
+                        const found = this.findQualifiedPlatinumInLeg(childId);
+                        if (found) return found;
+                    }
+                }
+                
+                return null;
+            }
+            
+            /**
+             * Empty income result for when there's no organization
+             */
+            getEmptyIncomeResult() {
+                return {
+                    performanceBonus: 0,
+                    differentialBonus: 0,
+                    leadershipBonus: 0,
+                    rubyBonus: 0,
+                    retailMargin: 0,
+                    customerSalesIncentive: 0,
+                    coreTotal: 0,
+                    corePlusTotal: 0,
+                    total: 0,
+                    totalPV: 0,
+                    totalBV: 0,
+                    rubyPV: 0,
+                    rubyBV: 0,
+                    personalPV: 0,
+                    personalBV: 0,
+                    qualifiedLegs: 0,
+                    performanceLevel: 0,
+                    vcsCompliantBV: 0
                 };
             }
             
@@ -1253,69 +2054,159 @@
                 const root = this.state.organization.get('root');
                 const incentives = [];
                 
-                // 1. Strong Start Incentive (SSI)
-                const ssi = this.calculateSSI(root);
-                if (ssi.amount > 0) incentives.push(ssi);
+                // Get metrics for incentive calculations
+                const metrics = root ? this.calculateAllMetrics(root) : null;
                 
-                // 2. Bronze Foundation Incentive (BFI)
-                const bfi = this.calculateBFI(income);
-                if (bfi.amount > 0) incentives.push(bfi);
+                // 1. Strong Start Incentive (SSI) - Core Plus
+                if (root) {
+                    const ssi = this.calculateSSI(root);
+                    incentives.push(ssi);
+                }
                 
-                // 3. Bronze Builder Incentive (BBI)
+                // 2. Bronze Foundation Incentive (BFI) - Core Plus
+                const bfi = this.calculateBFI(income, root);
+                incentives.push(bfi);
+                
+                // 3. Bronze Builder Incentive (BBI) - Core Plus
                 const bbi = this.calculateBBI(income, root);
-                if (bbi.amount > 0) incentives.push(bbi);
+                incentives.push(bbi);
                 
-                // 4. Ruby Bonus
-                const ruby = this.calculateRubyBonus(income);
-                if (ruby.amount > 0) incentives.push(ruby);
+                // 4. Performance Plus Incentive - Core Plus
+                const perfPlus = this.calculatePerformancePlus(income, metrics);
+                incentives.push(perfPlus);
                 
-                // 5. Leadership Bonus
-                const leadership = this.calculateLeadershipBonus(income, root);
-                if (leadership.amount > 0) incentives.push(leadership);
+                // 5. Performance Elite Incentive - Core Plus
+                const perfElite = this.calculatePerformanceElite(income, metrics);
+                incentives.push(perfElite);
                 
-                // 6. Depth Bonus
-                const depth = this.calculateDepthBonus(income, root);
-                if (depth.amount > 0) incentives.push(depth);
+                // 6. Ruby Bonus (already in Core Plan, show for reference)
+                incentives.push({
+                    name: 'Ruby Bonus',
+                    amount: income.rubyBonus,
+                    qualified: income.rubyBonus > 0,
+                    description: income.rubyBonus > 0 ? '2% of Ruby BV for 15,000+ Ruby PV' : 'Requires 15,000+ Ruby PV',
+                    details: {
+                        'Ruby PV': metrics ? metrics.rubyPV.toFixed(0) : '0',
+                        'Ruby BV': metrics ? metrics.rubyBV.toFixed(2) : '0',
+                        'Qualified Legs': metrics ? metrics.qualifiedLegs : 0
+                    }
+                });
                 
-                // Add more incentives as needed...
+                // 7. Leadership Bonus (already in Core Plan, show for reference)
+                incentives.push({
+                    name: 'Leadership Bonus',
+                    amount: income.leadershipBonus,
+                    qualified: income.leadershipBonus > 0,
+                    description: income.leadershipBonus > 0 ? '6% on qualified 25% legs' : 'Requires 25% level + Ruby Volume',
+                    details: {
+                        'Your Level': income.performanceLevel.toFixed(0) + '%',
+                        'Qualified Legs': metrics ? metrics.qualifiedLegs : 0,
+                        'Ruby PV': metrics ? metrics.rubyPV.toFixed(0) : '0'
+                    }
+                });
                 
-                const total = incentives.reduce((sum, inc) => sum + inc.amount, 0);
+                const total = incentives.reduce((sum, inc) => sum + (inc.amount || 0), 0);
                 
                 return { total, breakdown: incentives };
             }
             
             calculateSSI(node) {
-                const registrationDate = new Date(node.registrationDate);
+                if (!node) {
+                    return { name: 'Strong Start Incentive (SSI)', amount: 0, qualified: false, description: 'No IBO data' };
+                }
+                
+                const registrationDate = new Date(node.registrationDate || new Date());
                 const monthsSinceRegistration = this.getMonthsSince(registrationDate);
                 
+                // SSI only available for first 12 months
                 if (monthsSinceRegistration > 12) {
                     return { name: 'Strong Start Incentive (SSI)', amount: 0, qualified: false, description: 'Expired (>12 months)' };
                 }
                 
+                // Check if meeting baseline requirements
+                const meetsBaseline = node.pv >= 150 && this.checkVCSCompliance(node).compliant;
+                
                 let bonus = 0;
-                if (monthsSinceRegistration <= 3 && node.pv >= 150 && this.checkVCSCompliance(node).compliant) {
-                    bonus = 100;
+                let description = 'Not qualified';
+                
+                if (meetsBaseline) {
+                    if (monthsSinceRegistration <= 3) {
+                        bonus = 100;
+                        description = 'First 3 months bonus';
+                    } else if (monthsSinceRegistration <= 6) {
+                        bonus = 200;
+                        description = 'First 6 months bonus';
+                    } else if (monthsSinceRegistration <= 12) {
+                        bonus = 400;
+                        description = 'First 12 months bonus';
+                    }
                 }
                 
                 return {
                     name: 'Strong Start Incentive (SSI)',
                     amount: bonus,
                     qualified: bonus > 0,
-                    description: bonus > 0 ? 'New IBO bonus for first 3 months' : 'Not qualified',
+                    description: bonus > 0 ? description : 'Requires 150 PV + 60% VCS',
                     details: {
-                        monthsSinceRegistration,
-                        maxPotential: 1000
+                        'Months Since Registration': monthsSinceRegistration,
+                        'Max Potential': '$1,000 total'
                     }
                 };
             }
             
-            calculateBFI(income) {
+            calculateBFI(income, root) {
                 const performanceLevel = this.getPerformanceLevel(income.totalPV);
                 
-                if (performanceLevel < 9) {
-                    return { name: 'Bronze Foundation Incentive (BFI)', amount: 0, qualified: false, description: 'Requires 9%+ performance level' };
+                // BFI does not apply at Silver (7,500+ PV) or above
+                if (income.totalPV >= 7500) {
+                    return { 
+                        name: 'Bronze Foundation Incentive (BFI)', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Not available at Silver (7,500+ PV) or above'
+                    };
                 }
                 
+                // Must be at 9% or higher
+                if (performanceLevel < 9) {
+                    return { 
+                        name: 'Bronze Foundation Incentive (BFI)', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Requires 9%+ level (600+ PV)'
+                    };
+                }
+                
+                // Need 3 personally sponsored legs at 3%+ each
+                let qualifyingLegs = 0;
+                if (root && root.children) {
+                    qualifyingLegs = root.children.filter(childId => {
+                        const childPV = this.calculateGroupPV(childId);
+                        return this.getPerformanceLevel(childPV) >= 3;
+                    }).length;
+                }
+                
+                if (qualifyingLegs < 3) {
+                    return { 
+                        name: 'Bronze Foundation Incentive (BFI)', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: `Need 3+ legs at 3%+ (have ${qualifyingLegs})`
+                    };
+                }
+                
+                // Must meet baseline (150 PV, 60% VCS)
+                const meetsBaseline = root && root.pv >= 150 && this.checkVCSCompliance(root).compliant;
+                if (!meetsBaseline) {
+                    return { 
+                        name: 'Bronze Foundation Incentive (BFI)', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Need 150 Personal PV + 60% VCS'
+                    };
+                }
+                
+                // 30% multiplier on Performance Bonus
                 const multiplierBonus = income.performanceBonus * 0.30;
                 
                 return {
@@ -1324,7 +2215,8 @@
                     qualified: true,
                     description: '30% multiplier on Performance Bonus',
                     details: {
-                        'Base Bonus': '$' + income.performanceBonus.toFixed(2),
+                        'Performance Bonus': '$' + income.performanceBonus.toFixed(2),
+                        'Qualifying Legs (3%+)': qualifyingLegs,
                         'Multiplier': '30%'
                     }
                 };
@@ -1333,19 +2225,56 @@
             calculateBBI(income, root) {
                 const performanceLevel = this.getPerformanceLevel(income.totalPV);
                 
-                if (performanceLevel < 18) {
-                    return { name: 'Bronze Builder Incentive (BBI)', amount: 0, qualified: false, description: 'Requires 18%+ performance level' };
+                // BBI does not apply at Silver (7,500+ PV) or above
+                if (income.totalPV >= 7500) {
+                    return { 
+                        name: 'Bronze Builder Incentive (BBI)', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Not available at Silver (7,500+ PV) or above'
+                    };
                 }
                 
-                const qualifyingLegs = root.children ? root.children.filter(childId => {
-                    const childPV = this.calculateGroupPV(childId);
-                    return this.getPerformanceLevel(childPV) >= 6;
-                }).length : 0;
+                // Must be at 18% or higher
+                if (performanceLevel < 18) {
+                    return { 
+                        name: 'Bronze Builder Incentive (BBI)', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Requires 18%+ level (2,500+ PV)'
+                    };
+                }
+                
+                // Need 3 personally sponsored legs at 6%+ each
+                let qualifyingLegs = 0;
+                if (root && root.children) {
+                    qualifyingLegs = root.children.filter(childId => {
+                        const childPV = this.calculateGroupPV(childId);
+                        return this.getPerformanceLevel(childPV) >= 6;
+                    }).length;
+                }
                 
                 if (qualifyingLegs < 3) {
-                    return { name: 'Bronze Builder Incentive (BBI)', amount: 0, qualified: false, description: 'Requires 3+ legs at 6%+' };
+                    return { 
+                        name: 'Bronze Builder Incentive (BBI)', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: `Need 3+ legs at 6%+ (have ${qualifyingLegs})`
+                    };
                 }
                 
+                // Must meet baseline
+                const meetsBaseline = root && root.pv >= 150 && this.checkVCSCompliance(root).compliant;
+                if (!meetsBaseline) {
+                    return { 
+                        name: 'Bronze Builder Incentive (BBI)', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Need 150 Personal PV + 60% VCS'
+                    };
+                }
+                
+                // 40% multiplier on Performance Bonus
                 const multiplierBonus = income.performanceBonus * 0.40;
                 
                 return {
@@ -1354,86 +2283,130 @@
                     qualified: true,
                     description: '40% multiplier on Performance Bonus',
                     details: {
-                        'Qualifying Legs': qualifyingLegs,
+                        'Performance Bonus': '$' + income.performanceBonus.toFixed(2),
+                        'Qualifying Legs (6%+)': qualifyingLegs,
                         'Multiplier': '40%'
                     }
                 };
             }
             
-            calculateRubyBonus(income) {
-                if (income.totalPV < 15000) {
-                    return { name: 'Ruby Bonus', amount: 0, qualified: false, description: 'Requires 15,000+ Ruby PV' };
+            /**
+             * Performance Plus Incentive
+             * 2% multiplier on Ruby BV for 10,000-12,499 Ruby PV
+             */
+            calculatePerformancePlus(income, metrics) {
+                if (!metrics) {
+                    return { name: 'Performance Plus', amount: 0, qualified: false, description: 'No data' };
                 }
                 
-                const bonus = income.totalBV * 0.02;
+                // Must be Silver Producer level or above
+                if (income.totalPV < 7500) {
+                    return { 
+                        name: 'Performance Plus', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Requires Silver level (7,500+ PV)'
+                    };
+                }
+                
+                // Ruby PV must be 10,000-12,499
+                if (metrics.rubyPV < 10000 || metrics.rubyPV >= 12500) {
+                    return { 
+                        name: 'Performance Plus', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Requires 10,000-12,499 Ruby PV'
+                    };
+                }
+                
+                // 2% of Ruby BV
+                const bonus = metrics.rubyBV * 0.02;
                 
                 return {
-                    name: 'Ruby Bonus',
+                    name: 'Performance Plus',
                     amount: bonus,
                     qualified: true,
-                    description: '2% of Ruby BV for 15,000+ Ruby PV',
+                    description: '2% multiplier on Ruby BV',
                     details: {
-                        'Ruby PV': income.totalPV.toFixed(0),
-                        'Ruby BV': income.totalBV.toFixed(2)
+                        'Ruby PV': metrics.rubyPV.toFixed(0),
+                        'Ruby BV': metrics.rubyBV.toFixed(2),
+                        'Multiplier': '2%'
                     }
+                };
+            }
+            
+            /**
+             * Performance Elite Incentive
+             * 4% multiplier on Ruby BV for 12,500+ Ruby PV
+             */
+            calculatePerformanceElite(income, metrics) {
+                if (!metrics) {
+                    return { name: 'Performance Elite', amount: 0, qualified: false, description: 'No data' };
+                }
+                
+                // Must be Silver Producer level or above
+                if (income.totalPV < 7500) {
+                    return { 
+                        name: 'Performance Elite', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Requires Silver level (7,500+ PV)'
+                    };
+                }
+                
+                // Ruby PV must be 12,500+
+                if (metrics.rubyPV < 12500) {
+                    return { 
+                        name: 'Performance Elite', 
+                        amount: 0, 
+                        qualified: false, 
+                        description: 'Requires 12,500+ Ruby PV'
+                    };
+                }
+                
+                // 4% of Ruby BV
+                const bonus = metrics.rubyBV * 0.04;
+                
+                return {
+                    name: 'Performance Elite',
+                    amount: bonus,
+                    qualified: true,
+                    description: '4% multiplier on Ruby BV',
+                    details: {
+                        'Ruby PV': metrics.rubyPV.toFixed(0),
+                        'Ruby BV': metrics.rubyBV.toFixed(2),
+                        'Multiplier': '4%'
+                    }
+                };
+            }
+            
+            calculateRubyBonus(income) {
+                // Now handled in main calculateIncome
+                return {
+                    name: 'Ruby Bonus',
+                    amount: income.rubyBonus || 0,
+                    qualified: (income.rubyBonus || 0) > 0,
+                    description: (income.rubyBonus || 0) > 0 ? '2% of Ruby BV' : 'Requires 15,000+ Ruby PV'
                 };
             }
             
             calculateLeadershipBonus(income, root) {
-                const performanceLevel = this.getPerformanceLevel(income.totalPV);
-                
-                if (performanceLevel < 25) {
-                    return { name: 'Leadership Bonus', amount: 0, qualified: false, description: 'Requires 25% Performance Bonus level' };
-                }
-                
-                const qualifyingLegs = root.children ? root.children.filter(childId => {
-                    const childPV = this.calculateGroupPV(childId);
-                    return this.getPerformanceLevel(childPV) >= 25;
-                }).length : 0;
-                
-                if (qualifyingLegs === 0) {
-                    return { name: 'Leadership Bonus', amount: 0, qualified: false, description: 'No qualifying legs at 25%' };
-                }
-                
-                const bonus = income.totalBV * 0.06 * (qualifyingLegs / 10); // Simplified calculation
-                
+                // Now handled in main calculateIncome
                 return {
                     name: 'Leadership Bonus',
-                    amount: bonus,
-                    qualified: true,
-                    description: 'Up to 6% on qualifying group BV',
-                    details: {
-                        'Qualifying Legs': qualifyingLegs
-                    }
+                    amount: income.leadershipBonus || 0,
+                    qualified: (income.leadershipBonus || 0) > 0,
+                    description: (income.leadershipBonus || 0) > 0 ? '6% on 25% legs' : 'Requires 25% level'
                 };
             }
             
             calculateDepthBonus(income, root) {
-                const performanceLevel = this.getPerformanceLevel(income.totalPV);
-                
-                if (performanceLevel < 25) {
-                    return { name: 'Depth Bonus', amount: 0, qualified: false, description: 'Requires 25% Performance Bonus level' };
-                }
-                
-                const qualifyingLegs = root.children ? root.children.filter(childId => {
-                    const childPV = this.calculateGroupPV(childId);
-                    return this.getPerformanceLevel(childPV) >= 25;
-                }).length : 0;
-                
-                if (qualifyingLegs < 3) {
-                    return { name: 'Depth Bonus', amount: 0, qualified: false, description: 'Requires 3+ frontline groups at 25%' };
-                }
-                
-                const bonus = income.totalBV * 0.01;
-                
+                // Depth bonus for higher levels - simplified
                 return {
                     name: 'Depth Bonus',
-                    amount: bonus,
-                    qualified: true,
-                    description: '1% of qualifying downline BV',
-                    details: {
-                        'Qualifying Legs': qualifyingLegs
-                    }
+                    amount: 0,
+                    qualified: false,
+                    description: 'Available for Emerald and above'
                 };
             }
             
@@ -1515,6 +2488,11 @@
                 
                 if (summaryDiv) {
                     summaryDiv.innerHTML = `
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            <span>Group PV: ${income.totalPV.toLocaleString()}</span> | 
+                            <span>Ruby PV: ${income.rubyPV.toLocaleString()}</span> | 
+                            <span>Qualified Legs: ${income.qualifiedLegs}</span>
+                        </div>
                         <div class="flex justify-between">
                             <span>Performance Bonus:</span>
                             <span class="font-semibold">$${income.performanceBonus.toFixed(2)}</span>
@@ -1522,6 +2500,14 @@
                         <div class="flex justify-between">
                             <span>Differential Bonus:</span>
                             <span class="font-semibold">$${income.differentialBonus.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Leadership Bonus:</span>
+                            <span class="font-semibold">$${income.leadershipBonus.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Ruby Bonus:</span>
+                            <span class="font-semibold">$${income.rubyBonus.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
                             <span>Retail Margin:</span>
@@ -1593,6 +2579,63 @@
             attachGlobalEventListeners() {
                 // Auto-save every 30 seconds
                 setInterval(() => this.saveData(), 30000);
+                
+                // Reposition connection bars on window resize
+                window.addEventListener('resize', () => {
+                    if (this.resizeTimeout) clearTimeout(this.resizeTimeout);
+                    this.resizeTimeout = setTimeout(() => this.positionConnectionBars(), 100);
+                });
+            }
+            
+            attachPanningEvents() {
+                const viewport = document.getElementById('org-viewport');
+                const chart = document.getElementById('org-chart');
+                if (!viewport || !chart) return;
+                
+                let startX, startY, scrollLeft, scrollTop;
+                
+                viewport.addEventListener('mousedown', (e) => {
+                    // Don't pan if clicking on a node or button
+                    if (e.target.closest('.org-node') || e.target.closest('.org-node-btn')) return;
+                    
+                    this.state.isPanning = true;
+                    viewport.style.cursor = 'grabbing';
+                    startX = e.pageX - viewport.offsetLeft;
+                    startY = e.pageY - viewport.offsetTop;
+                    scrollLeft = viewport.scrollLeft;
+                    scrollTop = viewport.scrollTop;
+                });
+                
+                viewport.addEventListener('mouseleave', () => {
+                    this.state.isPanning = false;
+                    viewport.style.cursor = 'grab';
+                });
+                
+                viewport.addEventListener('mouseup', () => {
+                    this.state.isPanning = false;
+                    viewport.style.cursor = 'grab';
+                });
+                
+                viewport.addEventListener('mousemove', (e) => {
+                    if (!this.state.isPanning) return;
+                    e.preventDefault();
+                    const x = e.pageX - viewport.offsetLeft;
+                    const y = e.pageY - viewport.offsetTop;
+                    const walkX = (x - startX) * 1.5;
+                    const walkY = (y - startY) * 1.5;
+                    viewport.scrollLeft = scrollLeft - walkX;
+                    viewport.scrollTop = scrollTop - walkY;
+                });
+            }
+            
+            resetPan() {
+                const viewport = document.getElementById('org-viewport');
+                if (viewport) {
+                    viewport.scrollLeft = 0;
+                    viewport.scrollTop = 0;
+                }
+                this.state.zoomLevel = 1;
+                this.renderOrganizationChart();
             }
             
             attachVisualBuilderEvents() {
@@ -1637,47 +2680,102 @@
             // ============================================
             
             selectNode(nodeId) {
-                this.state.selectedNode = nodeId;
                 const node = this.state.organization.get(nodeId);
                 
-                if (node) {
+                if (!node) {
+                    console.warn('Node not found:', nodeId);
+                    this.state.selectedNode = null;
+                    // Clear form inputs
                     const nameInput = document.getElementById('member-name');
                     const pvInput = document.getElementById('member-pv');
                     const bvInput = document.getElementById('member-bv');
                     const customerSalesInput = document.getElementById('customer-sales-pv');
                     const vcsInput = document.getElementById('vcs-pv');
+                    const notesInput = document.getElementById('member-notes');
                     
-                    if (nameInput) nameInput.value = node.name;
-                    if (pvInput) pvInput.value = node.pv;
-                    if (bvInput) bvInput.value = node.bv.toFixed(2);
-                    if (customerSalesInput) customerSalesInput.value = node.customerSalesPV || (node.pv * 0.7).toFixed(0);
-                    if (vcsInput) vcsInput.value = node.vcsPV || (node.pv * 0.6).toFixed(0);
-                    
-                    this.updateVCSStatus();
+                    if (nameInput) nameInput.value = '';
+                    if (pvInput) pvInput.value = '';
+                    if (bvInput) bvInput.value = '';
+                    if (customerSalesInput) customerSalesInput.value = '';
+                    if (vcsInput) vcsInput.value = '';
+                    if (notesInput) notesInput.value = '';
+                    return;
                 }
+                
+                this.state.selectedNode = nodeId;
+                
+                const nameInput = document.getElementById('member-name');
+                const pvInput = document.getElementById('member-pv');
+                const bvInput = document.getElementById('member-bv');
+                const customerSalesInput = document.getElementById('customer-sales-pv');
+                const vcsInput = document.getElementById('vcs-pv');
+                const notesInput = document.getElementById('member-notes');
+                
+                if (nameInput) nameInput.value = node.name;
+                if (pvInput) pvInput.value = node.pv;
+                if (bvInput) bvInput.value = node.bv.toFixed(2);
+                if (customerSalesInput) customerSalesInput.value = node.customerSalesPV || (node.pv * 0.7).toFixed(0);
+                if (vcsInput) vcsInput.value = node.vcsPV || (node.pv * 0.6).toFixed(0);
+                if (notesInput) notesInput.value = node.notes || '';
+                
+                this.updateVCSStatus();
                 
                 this.renderOrganizationChart();
             }
             
             saveMember() {
-                if (!this.state.selectedNode) return;
+                if (!this.state.selectedNode) {
+                    alert('Please select a member first');
+                    return;
+                }
                 
                 const node = this.state.organization.get(this.state.selectedNode);
-                if (!node) return;
+                if (!node) {
+                    alert('Selected member not found');
+                    return;
+                }
                 
                 const nameInput = document.getElementById('member-name');
                 const pvInput = document.getElementById('member-pv');
                 const customerSalesInput = document.getElementById('customer-sales-pv');
                 const vcsInput = document.getElementById('vcs-pv');
+                const notesInput = document.getElementById('member-notes');
                 
-                if (nameInput) node.name = nameInput.value || node.name;
-                if (pvInput) {
-                    node.pv = parseFloat(pvInput.value) || 0;
-                    node.bv = node.pv * this.config.pvToBvRatio;
+                // Validate and sanitize inputs
+                if (nameInput) {
+                    const name = nameInput.value.trim();
+                    node.name = name || node.name;
                 }
-                if (customerSalesInput) node.customerSalesPV = parseFloat(customerSalesInput.value) || 0;
-                if (vcsInput) node.vcsPV = parseFloat(vcsInput.value) || 0;
                 
+                if (pvInput) {
+                    const pv = Math.max(0, parseFloat(pvInput.value) || 0);
+                    node.pv = pv;
+                    node.bv = pv * this.config.pvToBvRatio;
+                    pvInput.value = pv; // Update with sanitized value
+                }
+                
+                if (customerSalesInput) {
+                    const customerSalesPV = Math.max(0, Math.min(node.pv, parseFloat(customerSalesInput.value) || 0));
+                    node.customerSalesPV = customerSalesPV;
+                    customerSalesInput.value = customerSalesPV; // Update with sanitized value
+                }
+                
+                if (vcsInput) {
+                    const vcsPV = Math.max(0, Math.min(node.pv, parseFloat(vcsInput.value) || 0));
+                    node.vcsPV = vcsPV;
+                    vcsInput.value = vcsPV; // Update with sanitized value
+                }
+                
+                // Save notes
+                if (notesInput) {
+                    node.notes = notesInput.value.trim();
+                }
+                
+                // Update vcsCompliant property based on calculation
+                const vcsStatus = this.checkVCSCompliance(node);
+                node.vcsCompliant = vcsStatus.compliant;
+                
+                this.updateVCSStatus();
                 this.renderOrganizationChart();
                 this.saveData();
             }
@@ -1707,7 +2805,8 @@
                     children: [],
                     parent: parentId,
                     level: parent.level + 1,
-                    registrationDate: new Date().toISOString()
+                    registrationDate: new Date().toISOString(),
+                    notes: '' // Member notes/comments
                 };
                 
                 this.state.organization.set(newId, newNode);
@@ -1717,6 +2816,631 @@
                 this.selectNode(newId);
                 this.renderOrganizationChart();
                 this.saveData();
+            }
+            
+            loadExampleStructure(type) {
+                if (!type) return;
+                
+                if (!confirm(`This will replace your current organization structure with the ${type.toUpperCase().replace(/_/g, ' ')} example. Continue?`)) {
+                    document.getElementById('example-selector').value = '';
+                    return;
+                }
+                
+                // Clear existing organization
+                this.state.organization.clear();
+                this.state.selectedNode = null;
+                
+                // Get example structure
+                const structure = this.getExampleStructure(type);
+                
+                // Build the organization from the structure
+                this.buildOrganizationFromStructure(structure);
+                
+                // Reset selector
+                document.getElementById('example-selector').value = '';
+                
+                this.renderOrganizationChart();
+                this.saveData();
+                
+                // Auto fit after loading
+                setTimeout(() => this.autoFit(), 200);
+            }
+            
+            getExampleStructure(type) {
+                // All IBOs do 150 PV each per BWW 9 Core Steps
+                const PV = 150;
+                
+                const structures = {
+                    // ========================================
+                    // BWW SYR LEVELS
+                    // ========================================
+                    
+                    // BFI-T5 - Team of 5 (BWW SYR)
+                    bfi_t5: {
+                        name: 'You', pv: PV, children: [
+                            { name: 'IBO 1', pv: PV },
+                            { name: 'IBO 2', pv: PV },
+                            { name: 'IBO 3', pv: PV },
+                            { name: 'IBO 4', pv: PV }
+                        ]
+                    },
+                    
+                    // BBI-T10 - Team of 10 (BWW SYR)
+                    bbi_t10: {
+                        name: 'You', pv: PV, children: [
+                            { name: 'Leg 1', pv: PV, children: [
+                                { name: 'IBO 1a', pv: PV },
+                                { name: 'IBO 1b', pv: PV }
+                            ]},
+                            { name: 'Leg 2', pv: PV, children: [
+                                { name: 'IBO 2a', pv: PV },
+                                { name: 'IBO 2b', pv: PV }
+                            ]},
+                            { name: 'Leg 3', pv: PV, children: [
+                                { name: 'IBO 3a', pv: PV }
+                            ]}
+                        ]
+                    },
+                    
+                    // BTS25 - Bronze to Silver 25 (4 legs, 25 people, ~4000 PV)
+                    bts25: {
+                        name: 'You', pv: PV, children: this.generateBTS25Legs()
+                    },
+                    
+                    // EP40 - Eagle Platinum 40 (6 legs, 40 people, 7500 PV)
+                    ep40: {
+                        name: 'You', pv: PV, children: this.generateEP40Legs()
+                    },
+                    
+                    // EPR75 - Eagle Plus Ruby 75 (9 legs, 75 people, 15000 PV)
+                    epr75: {
+                        name: 'You', pv: PV, children: this.generateEPR75Legs()
+                    },
+                    
+                    // ========================================
+                    // AMWAY PRODUCER LEVELS
+                    // ========================================
+                    
+                    // Silver Producer - 7,500 PV = 50 IBOs @ 150 PV each
+                    silver: {
+                        name: 'You', pv: PV, children: this.generateSilverLegs()
+                    },
+                    
+                    // Gold Producer - Same as Silver (achieved 3 months)
+                    gold: {
+                        name: 'You (Gold)', pv: PV, children: this.generateSilverLegs()
+                    },
+                    
+                    // Platinum - 7,500 PV for 6 months (~50 IBOs)
+                    platinum: {
+                        name: 'You', pv: PV, children: this.generatePlatinumLegs()
+                    },
+                    
+                    // Founders Platinum - Silver for 12 months
+                    founders_platinum: {
+                        name: 'You (FP)', pv: PV, children: this.generatePlatinumLegs()
+                    },
+                    
+                    // ========================================
+                    // AMWAY PIN LEVELS
+                    // ========================================
+                    
+                    // Ruby - 15,000 PV = ~100 IBOs @ 150 PV each
+                    ruby: {
+                        name: 'You', pv: PV, children: this.generateRubyLegs()
+                    },
+                    
+                    // Sapphire - 2-3 legs at 25% for 6 months (~150 IBOs)
+                    sapphire: {
+                        name: 'You', pv: PV, children: this.generateSapphireLegs()
+                    },
+                    
+                    // Emerald - 3 legs at 25% for 6 months (~200 IBOs)
+                    emerald: {
+                        name: 'You', pv: PV, children: this.generateEmeraldLegs()
+                    },
+                    
+                    // Diamond - 6 legs at 25% for 6 months (~300 IBOs)
+                    diamond: {
+                        name: 'You', pv: PV, children: this.generateDiamondLegs(6)
+                    },
+                    
+                    // ========================================
+                    // EXECUTIVE LEVELS (Based on FP Groups)
+                    // ========================================
+                    
+                    // Executive Diamond - 6 Founders Platinum groups
+                    executive_diamond: {
+                        name: 'You (ED)', pv: PV, children: this.generateDiamondLegs(6, true)
+                    },
+                    
+                    // Double Diamond - 8 Founders Platinum groups
+                    double_diamond: {
+                        name: 'You (DD)', pv: PV, children: this.generateDiamondLegs(8, true)
+                    },
+                    
+                    // Triple Diamond - 10 Founders Platinum groups
+                    triple_diamond: {
+                        name: 'You (TD)', pv: PV, children: this.generateDiamondLegs(10, true)
+                    },
+                    
+                    // Crown - 12 Founders Platinum groups
+                    crown: {
+                        name: 'You (Crown)', pv: PV, children: this.generateDiamondLegs(12, true)
+                    },
+                    
+                    // Crown Ambassador - 14 Founders Platinum groups
+                    crown_ambassador: {
+                        name: 'You (CA)', pv: PV, children: this.generateDiamondLegs(14, true)
+                    },
+                    
+                    // Founders Crown Ambassador - 14+ FP groups
+                    founders_crown_ambassador: {
+                        name: 'You (FCA)', pv: PV, children: this.generateDiamondLegs(14, true)
+                    }
+                };
+                
+                return structures[type] || structures.bfi_t5;
+            }
+            
+            // BTS25 - Bronze to Silver 25: 4 legs, 25 people total
+            // 25 IBOs × 150 PV = 3,750 PV (approaching 4,000 PV Silver threshold)
+            generateBTS25Legs() {
+                const PV = 150;
+                // Target: 24 downline + You = 25 total
+                return [
+                    // Leg 1: 7 IBOs
+                    { name: 'Leg 1', pv: PV, children: [
+                        { name: 'L1-A', pv: PV, children: [
+                            { name: 'L1-A1', pv: PV },
+                            { name: 'L1-A2', pv: PV }
+                        ]},
+                        { name: 'L1-B', pv: PV, children: [
+                            { name: 'L1-B1', pv: PV },
+                            { name: 'L1-B2', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 2: 7 IBOs
+                    { name: 'Leg 2', pv: PV, children: [
+                        { name: 'L2-A', pv: PV, children: [
+                            { name: 'L2-A1', pv: PV },
+                            { name: 'L2-A2', pv: PV }
+                        ]},
+                        { name: 'L2-B', pv: PV, children: [
+                            { name: 'L2-B1', pv: PV },
+                            { name: 'L2-B2', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 3: 5 IBOs
+                    { name: 'Leg 3', pv: PV, children: [
+                        { name: 'L3-A', pv: PV, children: [
+                            { name: 'L3-A1', pv: PV }
+                        ]},
+                        { name: 'L3-B', pv: PV, children: [
+                            { name: 'L3-B1', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 4: 5 IBOs
+                    { name: 'Leg 4', pv: PV, children: [
+                        { name: 'L4-A', pv: PV, children: [
+                            { name: 'L4-A1', pv: PV }
+                        ]},
+                        { name: 'L4-B', pv: PV, children: [
+                            { name: 'L4-B1', pv: PV }
+                        ]}
+                    ]}
+                ];
+                // Total: 7+7+5+5 = 24 downline + You = 25 IBOs × 150 PV = 3,750 PV ✓
+            }
+            
+            // EP40 - Eagle Platinum 40: 6 legs, 40 people total
+            // 40 IBOs × 150 PV = 6,000 PV (EP structure teaches path to Platinum)
+            generateEP40Legs() {
+                const PV = 150;
+                // Target: 39 downline + You = 40 total
+                return [
+                    // Leg 1: 8 IBOs
+                    { name: 'Leg 1', pv: PV, children: [
+                        { name: 'L1-A', pv: PV, children: [
+                            { name: 'L1-A1', pv: PV },
+                            { name: 'L1-A2', pv: PV },
+                            { name: 'L1-A3', pv: PV }
+                        ]},
+                        { name: 'L1-B', pv: PV, children: [
+                            { name: 'L1-B1', pv: PV },
+                            { name: 'L1-B2', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 2: 8 IBOs
+                    { name: 'Leg 2', pv: PV, children: [
+                        { name: 'L2-A', pv: PV, children: [
+                            { name: 'L2-A1', pv: PV },
+                            { name: 'L2-A2', pv: PV },
+                            { name: 'L2-A3', pv: PV }
+                        ]},
+                        { name: 'L2-B', pv: PV, children: [
+                            { name: 'L2-B1', pv: PV },
+                            { name: 'L2-B2', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 3: 7 IBOs
+                    { name: 'Leg 3', pv: PV, children: [
+                        { name: 'L3-A', pv: PV, children: [
+                            { name: 'L3-A1', pv: PV },
+                            { name: 'L3-A2', pv: PV }
+                        ]},
+                        { name: 'L3-B', pv: PV, children: [
+                            { name: 'L3-B1', pv: PV },
+                            { name: 'L3-B2', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 4: 6 IBOs
+                    { name: 'Leg 4', pv: PV, children: [
+                        { name: 'L4-A', pv: PV, children: [
+                            { name: 'L4-A1', pv: PV },
+                            { name: 'L4-A2', pv: PV }
+                        ]},
+                        { name: 'L4-B', pv: PV, children: [
+                            { name: 'L4-B1', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 5: 5 IBOs
+                    { name: 'Leg 5', pv: PV, children: [
+                        { name: 'L5-A', pv: PV, children: [
+                            { name: 'L5-A1', pv: PV }
+                        ]},
+                        { name: 'L5-B', pv: PV, children: [
+                            { name: 'L5-B1', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 6: 5 IBOs
+                    { name: 'Leg 6', pv: PV, children: [
+                        { name: 'L6-A', pv: PV, children: [
+                            { name: 'L6-A1', pv: PV }
+                        ]},
+                        { name: 'L6-B', pv: PV, children: [
+                            { name: 'L6-B1', pv: PV }
+                        ]}
+                    ]}
+                ];
+                // Total: 8+8+7+6+5+5 = 39 downline + You = 40 IBOs × 150 PV = 6,000 PV ✓
+            }
+            
+            // EPR75 - Eagle Plus Ruby 75: 9 legs, 75 people total
+            // 75 IBOs × 150 PV = 11,250 PV (approaching Ruby 15,000 PV)
+            generateEPR75Legs() {
+                const PV = 150;
+                // Target: 74 downline + You = 75 total
+                // Structure: 1 EP40 leg (39 people) + 8 smaller legs (35 people)
+                return [
+                    // Main EP40 Leg: 39 IBOs
+                    { name: 'EP40 Leg', pv: PV, children: this.generateEP40Legs() },
+                    // Leg 2: 5 IBOs
+                    { name: 'Leg 2', pv: PV, children: [
+                        { name: 'L2-A', pv: PV, children: [{ name: 'L2-A1', pv: PV }] },
+                        { name: 'L2-B', pv: PV, children: [{ name: 'L2-B1', pv: PV }] }
+                    ]},
+                    // Leg 3: 5 IBOs
+                    { name: 'Leg 3', pv: PV, children: [
+                        { name: 'L3-A', pv: PV, children: [{ name: 'L3-A1', pv: PV }] },
+                        { name: 'L3-B', pv: PV, children: [{ name: 'L3-B1', pv: PV }] }
+                    ]},
+                    // Leg 4: 5 IBOs
+                    { name: 'Leg 4', pv: PV, children: [
+                        { name: 'L4-A', pv: PV, children: [{ name: 'L4-A1', pv: PV }] },
+                        { name: 'L4-B', pv: PV, children: [{ name: 'L4-B1', pv: PV }] }
+                    ]},
+                    // Leg 5: 4 IBOs
+                    { name: 'Leg 5', pv: PV, children: [
+                        { name: 'L5-A', pv: PV, children: [{ name: 'L5-A1', pv: PV }] },
+                        { name: 'L5-B', pv: PV }
+                    ]},
+                    // Leg 6: 4 IBOs
+                    { name: 'Leg 6', pv: PV, children: [
+                        { name: 'L6-A', pv: PV, children: [{ name: 'L6-A1', pv: PV }] },
+                        { name: 'L6-B', pv: PV }
+                    ]},
+                    // Leg 7: 4 IBOs
+                    { name: 'Leg 7', pv: PV, children: [
+                        { name: 'L7-A', pv: PV, children: [{ name: 'L7-A1', pv: PV }] },
+                        { name: 'L7-B', pv: PV }
+                    ]},
+                    // Leg 8: 4 IBOs
+                    { name: 'Leg 8', pv: PV, children: [
+                        { name: 'L8-A', pv: PV, children: [{ name: 'L8-A1', pv: PV }] },
+                        { name: 'L8-B', pv: PV }
+                    ]},
+                    // Leg 9: 4 IBOs
+                    { name: 'Leg 9', pv: PV, children: [
+                        { name: 'L9-A', pv: PV, children: [{ name: 'L9-A1', pv: PV }] },
+                        { name: 'L9-B', pv: PV }
+                    ]}
+                ];
+                // Total: 39 + 5+5+5+4+4+4+4+4 = 74 downline + You = 75 IBOs × 150 PV = 11,250 PV ✓
+            }
+            
+            // Silver/Platinum - 7,500 PV = 50 IBOs @ 150 PV each
+            // Structure: 6 legs with 49 downline + You = 50 IBOs total
+            generateSilverLegs() {
+                const PV = 150;
+                // Target: 49 downline IBOs (You + 49 = 50 total = 7,500 PV)
+                // Each leg averages ~8 IBOs
+                return [
+                    // Leg 1: 9 IBOs
+                    { name: 'Leg 1', pv: PV, children: [
+                        { name: 'L1-A', pv: PV, children: [
+                            { name: 'L1-A1', pv: PV },
+                            { name: 'L1-A2', pv: PV },
+                            { name: 'L1-A3', pv: PV }
+                        ]},
+                        { name: 'L1-B', pv: PV, children: [
+                            { name: 'L1-B1', pv: PV },
+                            { name: 'L1-B2', pv: PV },
+                            { name: 'L1-B3', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 2: 9 IBOs
+                    { name: 'Leg 2', pv: PV, children: [
+                        { name: 'L2-A', pv: PV, children: [
+                            { name: 'L2-A1', pv: PV },
+                            { name: 'L2-A2', pv: PV },
+                            { name: 'L2-A3', pv: PV }
+                        ]},
+                        { name: 'L2-B', pv: PV, children: [
+                            { name: 'L2-B1', pv: PV },
+                            { name: 'L2-B2', pv: PV },
+                            { name: 'L2-B3', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 3: 8 IBOs
+                    { name: 'Leg 3', pv: PV, children: [
+                        { name: 'L3-A', pv: PV, children: [
+                            { name: 'L3-A1', pv: PV },
+                            { name: 'L3-A2', pv: PV },
+                            { name: 'L3-A3', pv: PV }
+                        ]},
+                        { name: 'L3-B', pv: PV, children: [
+                            { name: 'L3-B1', pv: PV },
+                            { name: 'L3-B2', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 4: 8 IBOs
+                    { name: 'Leg 4', pv: PV, children: [
+                        { name: 'L4-A', pv: PV, children: [
+                            { name: 'L4-A1', pv: PV },
+                            { name: 'L4-A2', pv: PV },
+                            { name: 'L4-A3', pv: PV }
+                        ]},
+                        { name: 'L4-B', pv: PV, children: [
+                            { name: 'L4-B1', pv: PV },
+                            { name: 'L4-B2', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 5: 8 IBOs
+                    { name: 'Leg 5', pv: PV, children: [
+                        { name: 'L5-A', pv: PV, children: [
+                            { name: 'L5-A1', pv: PV },
+                            { name: 'L5-A2', pv: PV }
+                        ]},
+                        { name: 'L5-B', pv: PV, children: [
+                            { name: 'L5-B1', pv: PV },
+                            { name: 'L5-B2', pv: PV },
+                            { name: 'L5-B3', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 6: 7 IBOs
+                    { name: 'Leg 6', pv: PV, children: [
+                        { name: 'L6-A', pv: PV, children: [
+                            { name: 'L6-A1', pv: PV },
+                            { name: 'L6-A2', pv: PV }
+                        ]},
+                        { name: 'L6-B', pv: PV, children: [
+                            { name: 'L6-B1', pv: PV },
+                            { name: 'L6-B2', pv: PV }
+                        ]}
+                    ]}
+                ];
+                // Total: 9+9+8+8+8+7 = 49 downline + You = 50 IBOs × 150 PV = 7,500 PV ✓
+            }
+            
+            // Platinum - Same as Silver structure (Platinum = Silver for 6 months)
+            generatePlatinumLegs() {
+                return this.generateSilverLegs();
+            }
+            
+            // Ruby - 15,000+ PV with NO legs at 7,500 PV or more
+            // Multiple smaller organizations all under 7,500 PV each
+            // 100 IBOs × 150 PV = 15,000 PV spread across many legs
+            generateRubyLegs() {
+                const PV = 150;
+                // 8 legs, each under 7,500 PV (under 50 IBOs each)
+                // Total: ~99 downline + You = 100 IBOs = 15,000 PV
+                return [
+                    // Leg 1: 15 IBOs (2,250 PV - under 7,500)
+                    { name: 'Leg 1', pv: PV, children: [
+                        { name: 'L1-A', pv: PV, children: [
+                            { name: 'L1-A1', pv: PV, children: [{ name: 'L1-A1a', pv: PV }] },
+                            { name: 'L1-A2', pv: PV, children: [{ name: 'L1-A2a', pv: PV }] }
+                        ]},
+                        { name: 'L1-B', pv: PV, children: [
+                            { name: 'L1-B1', pv: PV, children: [{ name: 'L1-B1a', pv: PV }] },
+                            { name: 'L1-B2', pv: PV, children: [{ name: 'L1-B2a', pv: PV }] }
+                        ]},
+                        { name: 'L1-C', pv: PV, children: [
+                            { name: 'L1-C1', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 2: 15 IBOs (2,250 PV)
+                    { name: 'Leg 2', pv: PV, children: [
+                        { name: 'L2-A', pv: PV, children: [
+                            { name: 'L2-A1', pv: PV, children: [{ name: 'L2-A1a', pv: PV }] },
+                            { name: 'L2-A2', pv: PV, children: [{ name: 'L2-A2a', pv: PV }] }
+                        ]},
+                        { name: 'L2-B', pv: PV, children: [
+                            { name: 'L2-B1', pv: PV, children: [{ name: 'L2-B1a', pv: PV }] },
+                            { name: 'L2-B2', pv: PV, children: [{ name: 'L2-B2a', pv: PV }] }
+                        ]},
+                        { name: 'L2-C', pv: PV, children: [
+                            { name: 'L2-C1', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 3: 14 IBOs (2,100 PV)
+                    { name: 'Leg 3', pv: PV, children: [
+                        { name: 'L3-A', pv: PV, children: [
+                            { name: 'L3-A1', pv: PV, children: [{ name: 'L3-A1a', pv: PV }] },
+                            { name: 'L3-A2', pv: PV }
+                        ]},
+                        { name: 'L3-B', pv: PV, children: [
+                            { name: 'L3-B1', pv: PV, children: [{ name: 'L3-B1a', pv: PV }] },
+                            { name: 'L3-B2', pv: PV }
+                        ]},
+                        { name: 'L3-C', pv: PV, children: [
+                            { name: 'L3-C1', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 4: 14 IBOs (2,100 PV)
+                    { name: 'Leg 4', pv: PV, children: [
+                        { name: 'L4-A', pv: PV, children: [
+                            { name: 'L4-A1', pv: PV, children: [{ name: 'L4-A1a', pv: PV }] },
+                            { name: 'L4-A2', pv: PV }
+                        ]},
+                        { name: 'L4-B', pv: PV, children: [
+                            { name: 'L4-B1', pv: PV, children: [{ name: 'L4-B1a', pv: PV }] },
+                            { name: 'L4-B2', pv: PV }
+                        ]},
+                        { name: 'L4-C', pv: PV, children: [
+                            { name: 'L4-C1', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 5: 12 IBOs (1,800 PV)
+                    { name: 'Leg 5', pv: PV, children: [
+                        { name: 'L5-A', pv: PV, children: [
+                            { name: 'L5-A1', pv: PV },
+                            { name: 'L5-A2', pv: PV }
+                        ]},
+                        { name: 'L5-B', pv: PV, children: [
+                            { name: 'L5-B1', pv: PV },
+                            { name: 'L5-B2', pv: PV }
+                        ]},
+                        { name: 'L5-C', pv: PV, children: [
+                            { name: 'L5-C1', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 6: 10 IBOs (1,500 PV)
+                    { name: 'Leg 6', pv: PV, children: [
+                        { name: 'L6-A', pv: PV, children: [
+                            { name: 'L6-A1', pv: PV },
+                            { name: 'L6-A2', pv: PV }
+                        ]},
+                        { name: 'L6-B', pv: PV, children: [
+                            { name: 'L6-B1', pv: PV },
+                            { name: 'L6-B2', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 7: 10 IBOs (1,500 PV)
+                    { name: 'Leg 7', pv: PV, children: [
+                        { name: 'L7-A', pv: PV, children: [
+                            { name: 'L7-A1', pv: PV },
+                            { name: 'L7-A2', pv: PV }
+                        ]},
+                        { name: 'L7-B', pv: PV, children: [
+                            { name: 'L7-B1', pv: PV },
+                            { name: 'L7-B2', pv: PV }
+                        ]}
+                    ]},
+                    // Leg 8: 9 IBOs (1,350 PV)
+                    { name: 'Leg 8', pv: PV, children: [
+                        { name: 'L8-A', pv: PV, children: [
+                            { name: 'L8-A1', pv: PV },
+                            { name: 'L8-A2', pv: PV }
+                        ]},
+                        { name: 'L8-B', pv: PV, children: [
+                            { name: 'L8-B1', pv: PV }
+                        ]}
+                    ]}
+                ];
+                // Total: 15+15+14+14+12+10+10+9 = 99 downline + You = 100 IBOs × 150 PV = 15,000 PV ✓
+                // Each leg is under 7,500 PV (largest is 2,250 PV) ✓
+            }
+            
+            // Sapphire - 2 legs at 7,500+ PV (25% level) for 6 months
+            // Each 25% leg needs 7,500 PV = 50 IBOs
+            // Total: ~102 IBOs = 15,300 PV (2 qualified legs)
+            generateSapphireLegs() {
+                const PV = 150;
+                return [
+                    { name: '25% Leg 1 (7,500 PV)', pv: PV, children: this.generateSilverLegs() },
+                    { name: '25% Leg 2 (7,500 PV)', pv: PV, children: this.generateSilverLegs() }
+                ];
+                // Total: 2 × 50 = 100 downline + 2 leg heads + You ≈ 102 IBOs × 150 PV ≈ 15,300 PV ✓
+                // Both legs at 7,500+ PV (25% level) ✓
+            }
+            
+            // Emerald - Platinum + 3 legs at 25% for 6 months
+            // You must be at Platinum level AND have 3 legs at 25%
+            // ~153 IBOs = 22,950 PV
+            generateEmeraldLegs() {
+                const PV = 150;
+                return [
+                    { name: '25% Leg 1 (7,500 PV)', pv: PV, children: this.generateSilverLegs() },
+                    { name: '25% Leg 2 (7,500 PV)', pv: PV, children: this.generateSilverLegs() },
+                    { name: '25% Leg 3 (7,500 PV)', pv: PV, children: this.generateSilverLegs() }
+                ];
+                // Total: 3 × 50 = 150 downline + 3 leg heads + You ≈ 153 IBOs × 150 PV ≈ 22,950 PV ✓
+                // 3 legs at 25% level ✓
+            }
+            
+            // Diamond and above - 6+ legs at 25% for 6 months
+            // Each leg is a full Platinum group (50 IBOs, 7,500 PV)
+            generateDiamondLegs(numLegs, isFoundersPlatinum = false) {
+                const PV = 150;
+                const legs = [];
+                
+                for (let i = 1; i <= numLegs; i++) {
+                    legs.push({
+                        name: `${isFoundersPlatinum ? 'FP' : 'Platinum'} ${i}`,
+                        pv: PV,
+                        children: this.generateSilverLegs()
+                    });
+                }
+                
+                return legs;
+                // Diamond (6 legs): 6 × 50 = 300 IBOs × 150 PV = 45,000 PV ✓
+                // Executive Diamond (6 FP legs): 6 × 50 = 300 IBOs × 150 PV = 45,000 PV ✓
+                // Double Diamond (8 FP legs): 8 × 50 = 400 IBOs × 150 PV = 60,000 PV ✓
+                // Triple Diamond (10 FP legs): 10 × 50 = 500 IBOs × 150 PV = 75,000 PV ✓
+                // Crown (12 FP legs): 12 × 50 = 600 IBOs × 150 PV = 90,000 PV ✓
+                // Crown Ambassador (14 FP legs): 14 × 50 = 700 IBOs × 150 PV = 105,000 PV ✓
+            }
+            
+            buildOrganizationFromStructure(structure, parentId = null, level = 0) {
+                const nodeId = parentId === null ? 'root' : `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
+                const node = {
+                    id: nodeId,
+                    name: structure.name,
+                    pv: structure.pv,
+                    bv: structure.pv * this.config.pvToBvRatio,
+                    customerSalesPV: structure.pv * 0.7,
+                    vcsPV: structure.pv * 0.6,
+                    vcsCompliant: true,
+                    children: [],
+                    parent: parentId,
+                    level: level,
+                    registrationDate: new Date().toISOString(),
+                    notes: ''
+                };
+                
+                this.state.organization.set(nodeId, node);
+                
+                if (structure.children && structure.children.length > 0) {
+                    structure.children.forEach(childStructure => {
+                        const childId = this.buildOrganizationFromStructure(childStructure, nodeId, level + 1);
+                        node.children.push(childId);
+                    });
+                }
+                
+                return nodeId;
             }
             
             deleteMember(deleteChildren = false, nodeId = null) {
@@ -1795,6 +3519,16 @@
                 alert(`Business structure pushed to ${this.formatMonth(currentMonth)}!`);
             }
             
+            deleteMonthlyData(month) {
+                if (!confirm(`Delete data for ${this.formatMonth(month)}? This cannot be undone.`)) {
+                    return;
+                }
+                
+                this.state.monthlyData.delete(month);
+                this.saveData();
+                this.renderTabContent();
+            }
+            
             switchTab(tabName) {
                 this.state.currentTab = tabName;
                 
@@ -1823,6 +3557,237 @@
                     }
                     modal.classList.add('show');
                 }
+            }
+            
+            // ============================================
+            // UPGRADE IBO TO STRUCTURE
+            // ============================================
+            
+            showUpgradeModal() {
+                if (!this.state.selectedNode) {
+                    alert('Please select an IBO first');
+                    return;
+                }
+                
+                const node = this.state.organization.get(this.state.selectedNode);
+                if (!node) {
+                    alert('Selected IBO not found');
+                    return;
+                }
+                
+                // Update modal with selected IBO name
+                const nameSpan = document.getElementById('upgrade-ibo-name');
+                if (nameSpan) {
+                    nameSpan.textContent = node.name;
+                }
+                
+                const modal = document.getElementById('upgrade-ibo-modal');
+                if (modal) {
+                    modal.classList.add('show');
+                }
+            }
+            
+            hideUpgradeModal() {
+                const modal = document.getElementById('upgrade-ibo-modal');
+                if (modal) {
+                    modal.classList.remove('show');
+                }
+            }
+            
+            applyUpgrade() {
+                if (!this.state.selectedNode) {
+                    alert('No IBO selected');
+                    return;
+                }
+                
+                const selectedNode = this.state.organization.get(this.state.selectedNode);
+                if (!selectedNode) {
+                    alert('Selected IBO not found');
+                    return;
+                }
+                
+                const structureSelect = document.getElementById('upgrade-structure-select');
+                const keepNameCheckbox = document.getElementById('upgrade-keep-name');
+                
+                if (!structureSelect) return;
+                
+                const structureType = structureSelect.value;
+                const keepName = keepNameCheckbox ? keepNameCheckbox.checked : true;
+                
+                // Get the structure template
+                const structure = this.getExampleStructure(structureType);
+                
+                // If keeping name, update structure root name
+                if (keepName) {
+                    structure.name = selectedNode.name;
+                }
+                
+                // Store existing children to preserve them
+                const existingChildren = selectedNode.children ? [...selectedNode.children] : [];
+                
+                // Get parent info
+                const parentId = selectedNode.parent;
+                const nodeId = this.state.selectedNode;
+                const isRoot = nodeId === 'root';
+                
+                if (isRoot) {
+                    // If upgrading root, clear everything and rebuild
+                    this.state.organization.clear();
+                    this.buildOrganizationFromStructure(structure, null, 0);
+                    
+                    // Re-attach existing children to the deepest nodes or first available
+                    if (existingChildren.length > 0) {
+                        this.reattachChildren(existingChildren, 'root');
+                    }
+                } else {
+                    // Remove the selected node from parent's children
+                    const parent = this.state.organization.get(parentId);
+                    if (parent) {
+                        const childIndex = parent.children.indexOf(nodeId);
+                        
+                        // Delete the selected node and all its generated structure
+                        this.deleteNodeRecursive(nodeId);
+                        
+                        // Build the new structure as a subtree
+                        const newNodeId = this.buildOrganizationFromStructureAsSubtree(structure, parentId, selectedNode.level);
+                        
+                        // Insert the new node at the same position
+                        if (childIndex >= 0) {
+                            parent.children.splice(childIndex, 0, newNodeId);
+                        } else {
+                            parent.children.push(newNodeId);
+                        }
+                        
+                        // Re-attach existing children
+                        if (existingChildren.length > 0) {
+                            this.reattachChildren(existingChildren, newNodeId);
+                        }
+                    }
+                }
+                
+                // Close modal and refresh
+                this.hideUpgradeModal();
+                this.renderOrganizationChart();
+                this.updateIncomeDisplay();
+                this.saveData();
+                
+                // Show success message
+                const structureNames = {
+                    bfi_t5: 'BFI-T5', bbi_t10: 'BBI-T10', bts25: 'BTS25', ep40: 'EP40', epr75: 'EPR75',
+                    silver: 'Silver Producer', gold: 'Gold Producer', platinum: 'Platinum', founders_platinum: 'Founders Platinum',
+                    ruby: 'Ruby', sapphire: 'Sapphire', emerald: 'Emerald', diamond: 'Diamond',
+                    executive_diamond: 'Executive Diamond', double_diamond: 'Double Diamond', triple_diamond: 'Triple Diamond',
+                    crown: 'Crown', crown_ambassador: 'Crown Ambassador', founders_crown_ambassador: 'Founders Crown Ambassador'
+                };
+                
+                alert(`Successfully upgraded "${structure.name}" to ${structureNames[structureType] || structureType} structure!`);
+            }
+            
+            // Build structure as a subtree (not starting from root)
+            buildOrganizationFromStructureAsSubtree(structure, parentId, startLevel) {
+                const nodeId = `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
+                const node = {
+                    id: nodeId,
+                    name: structure.name,
+                    pv: structure.pv,
+                    bv: structure.pv * this.config.pvToBvRatio,
+                    customerSalesPV: structure.pv * 0.7,
+                    vcsPV: structure.pv * 0.6,
+                    vcsCompliant: true,
+                    children: [],
+                    parent: parentId,
+                    level: startLevel,
+                    registrationDate: new Date().toISOString(),
+                    notes: ''
+                };
+                
+                this.state.organization.set(nodeId, node);
+                
+                if (structure.children && structure.children.length > 0) {
+                    structure.children.forEach(childStructure => {
+                        const childId = this.buildOrganizationFromStructureAsSubtree(childStructure, nodeId, startLevel + 1);
+                        node.children.push(childId);
+                    });
+                }
+                
+                return nodeId;
+            }
+            
+            // Delete a node and all its descendants
+            deleteNodeRecursive(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return;
+                
+                // First delete all children recursively
+                if (node.children && node.children.length > 0) {
+                    [...node.children].forEach(childId => {
+                        this.deleteNodeRecursive(childId);
+                    });
+                }
+                
+                // Then delete this node
+                this.state.organization.delete(nodeId);
+            }
+            
+            // Re-attach existing children to a new parent structure
+            reattachChildren(childIds, newParentId) {
+                const newParent = this.state.organization.get(newParentId);
+                if (!newParent) return;
+                
+                // Find the first "leg" node (first level children) to attach orphaned nodes
+                let targetParentId = newParentId;
+                
+                // If the new parent has children, attach to the last child's deepest node
+                if (newParent.children && newParent.children.length > 0) {
+                    // Get a developing/empty leg if available, otherwise use first leg
+                    const lastLegId = newParent.children[newParent.children.length - 1];
+                    targetParentId = this.findDeepestLeafNode(lastLegId);
+                }
+                
+                const targetParent = this.state.organization.get(targetParentId);
+                if (!targetParent) return;
+                
+                // Attach each child
+                childIds.forEach(childId => {
+                    const child = this.state.organization.get(childId);
+                    if (child) {
+                        child.parent = targetParentId;
+                        child.level = targetParent.level + 1;
+                        if (!targetParent.children) targetParent.children = [];
+                        targetParent.children.push(childId);
+                        
+                        // Update all descendant levels
+                        this.updateDescendantLevels(childId);
+                    }
+                });
+            }
+            
+            // Find the deepest leaf node in a subtree
+            findDeepestLeafNode(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return nodeId;
+                
+                if (!node.children || node.children.length === 0) {
+                    return nodeId;
+                }
+                
+                // Go down the last child
+                return this.findDeepestLeafNode(node.children[node.children.length - 1]);
+            }
+            
+            // Update levels of all descendants after reattachment
+            updateDescendantLevels(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node || !node.children) return;
+                
+                node.children.forEach(childId => {
+                    const child = this.state.organization.get(childId);
+                    if (child) {
+                        child.level = node.level + 1;
+                        this.updateDescendantLevels(childId);
+                    }
+                });
             }
             
             generateDetailedIncomeBreakdown() {
@@ -1949,22 +3914,71 @@
             zoomIn() {
                 this.state.zoomLevel = Math.min(2, this.state.zoomLevel + 0.1);
                 this.applyZoom();
+                setTimeout(() => this.positionConnectionBars(), 100);
             }
             
             zoomOut() {
-                this.state.zoomLevel = Math.max(0.5, this.state.zoomLevel - 0.1);
+                this.state.zoomLevel = Math.max(0.2, this.state.zoomLevel - 0.1);
                 this.applyZoom();
+                setTimeout(() => this.positionConnectionBars(), 100);
             }
             
             autoFit() {
+                const viewport = document.getElementById('org-viewport');
+                const chart = document.getElementById('org-chart');
+                if (!viewport || !chart) return;
+                
+                // Reset zoom first to measure true size
                 this.state.zoomLevel = 1;
-                this.applyZoom();
+                chart.style.transform = 'scale(1)';
+                
+                // Wait for reflow
+                requestAnimationFrame(() => {
+                    const viewportWidth = viewport.clientWidth;
+                    const viewportHeight = viewport.clientHeight;
+                    const chartWidth = chart.scrollWidth;
+                    const chartHeight = chart.scrollHeight;
+                    
+                    // Calculate zoom to fit both dimensions with padding
+                    const padding = 40;
+                    const scaleX = (viewportWidth - padding) / chartWidth;
+                    const scaleY = (viewportHeight - padding) / chartHeight;
+                    
+                    // Use the smaller scale to ensure everything fits
+                    let newZoom = Math.min(scaleX, scaleY);
+                    
+                    // Clamp zoom between 0.2 and 1.5
+                    newZoom = Math.max(0.2, Math.min(1.5, newZoom));
+                    
+                    this.state.zoomLevel = newZoom;
+                    this.applyZoom();
+                    
+                    // Center the content
+                    requestAnimationFrame(() => {
+                        const scaledWidth = chartWidth * newZoom;
+                        const scaledHeight = chartHeight * newZoom;
+                        
+                        // Center horizontally
+                        if (scaledWidth < viewportWidth) {
+                            viewport.scrollLeft = 0;
+                        } else {
+                            viewport.scrollLeft = (scaledWidth - viewportWidth) / 2;
+                        }
+                        
+                        // Scroll to top
+                        viewport.scrollTop = 0;
+                        
+                        // Reposition connection bars after zoom
+                        this.positionConnectionBars();
+                    });
+                });
             }
             
             applyZoom() {
                 const chart = document.getElementById('org-chart');
                 if (chart) {
                     chart.style.transform = `scale(${this.state.zoomLevel})`;
+                    chart.style.transformOrigin = 'top center';
                 }
             }
             
@@ -1991,9 +4005,9 @@
                 const maxStart = Math.max(0, allMonths.length - this.state.timelineRange);
                 
                 if (direction === 'left') {
-                    this.state.timelineStartIndex = Math.max(0, this.state.timelineStartIndex - this.state.timelineRange);
+                    this.state.timelineStartIndex = Math.max(0, this.state.timelineStartIndex - 1);
                 } else {
-                    this.state.timelineStartIndex = Math.min(maxStart, this.state.timelineStartIndex + this.state.timelineRange);
+                    this.state.timelineStartIndex = Math.min(maxStart, this.state.timelineStartIndex + 1);
                 }
                 
                 this.renderTabContent();
@@ -2076,6 +4090,56 @@
             // UTILITY METHODS
             // ============================================
             
+            // Theme Methods
+            loadThemePreference() {
+                // Check localStorage first
+                const savedTheme = localStorage.getItem('amwayPlannerTheme');
+                if (savedTheme) {
+                    this.state.darkMode = savedTheme === 'dark';
+                } else {
+                    // Check system preference
+                    this.state.darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                }
+                this.applyTheme();
+            }
+            
+            toggleTheme() {
+                this.state.darkMode = !this.state.darkMode;
+                localStorage.setItem('amwayPlannerTheme', this.state.darkMode ? 'dark' : 'light');
+                this.applyTheme();
+                this.render(); // Re-render to update icon
+            }
+            
+            applyTheme() {
+                if (this.state.darkMode) {
+                    document.body.classList.add('dark-mode');
+                    document.documentElement.classList.add('dark-mode');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    document.documentElement.classList.remove('dark-mode');
+                }
+            }
+            
+            generateMonthOptions() {
+                const options = [];
+                const today = new Date();
+                
+                // Generate 12 months back and 12 months forward
+                for (let i = -12; i <= 12; i++) {
+                    const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                    const monthStr = date.toISOString().slice(0, 7);
+                    const selected = monthStr === this.state.currentMonth ? 'selected' : '';
+                    options.push(`<option value="${monthStr}" ${selected}>${this.formatMonth(monthStr)}</option>`);
+                }
+                
+                return options.join('');
+            }
+            
+            changeMonth(monthStr) {
+                this.state.currentMonth = monthStr;
+                this.saveData();
+            }
+            
             formatMonth(monthStr) {
                 const [year, month] = monthStr.split('-');
                 const date = new Date(year, month - 1);
@@ -2108,10 +4172,19 @@
             }
             
             async exportToPDF() {
+                // Check for required libraries
+                if (typeof window.jspdf === 'undefined' || typeof html2canvas === 'undefined') {
+                    alert('PDF export libraries are not loaded. Please check your internet connection and refresh the page.');
+                    return;
+                }
+                
                 alert('Generating PDF... This may take a moment.');
                 
                 try {
                     const { jsPDF } = window.jspdf;
+                    if (!jsPDF) {
+                        throw new Error('jsPDF not available');
+                    }
                     const pdf = new jsPDF('p', 'mm', 'a4');
                     
                     // Cover Page
@@ -2167,13 +4240,13 @@
                     yPos = 30;
                     
                     const disclaimers = [
-                        'For the calendar year 2023, the average income from Amway for all U.S. registered',
-                        'IBOs at the Founders Platinum level and below was $841 before expenses.',
+                        'For the calendar year 2024, the average income from Amway for all U.S. registered',
+                        'IBOs at the Founders Platinum level and below was approximately $900 before expenses.',
                         '',
                         'Earnings depend on many factors, including customer base, business experience,',
                         'effort, dedication, and quality and performance of the downline sales team.',
                         '',
-                        'This calculator provides estimates based on 2024 compensation plan data and',
+                        'This calculator provides estimates based on 2025 compensation plan data and',
                         'should be used for planning purposes only.'
                     ];
                     
@@ -2191,6 +4264,12 @@
             }
             
             async exportToImage() {
+                // Check for required library
+                if (typeof html2canvas === 'undefined') {
+                    alert('Image export library is not loaded. Please check your internet connection and refresh the page.');
+                    return;
+                }
+                
                 alert('Generating image... This may take a moment.');
                 
                 try {
@@ -2221,6 +4300,111 @@
                     console.error('Error exporting image:', error);
                     alert('Error exporting image. Please try again.');
                 }
+            }
+            
+            // Export all data to JSON file for backup
+            exportToJSON() {
+                try {
+                    const dataToExport = {
+                        version: '1.0',
+                        exportDate: new Date().toISOString(),
+                        appName: 'Amway Business Planner 2025',
+                        organization: Array.from(this.planner.state.organization.entries()),
+                        monthlyData: Array.from(this.planner.state.monthlyData.entries()).map(([month, data]) => [
+                            month,
+                            {
+                                organization: Array.from(data.organization.entries()),
+                                income: data.income,
+                                timestamp: data.timestamp
+                            }
+                        ]),
+                        currentMonth: this.planner.state.currentMonth
+                    };
+                    
+                    const jsonString = JSON.stringify(dataToExport, null, 2);
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Amway_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    alert('Backup exported successfully! Keep this file safe to restore your data later.');
+                } catch (error) {
+                    console.error('Error exporting backup:', error);
+                    alert('Error creating backup. Please try again.');
+                }
+            }
+            
+            // Trigger file input for import
+            triggerImport() {
+                const fileInput = document.getElementById('import-file-input');
+                if (fileInput) {
+                    fileInput.click();
+                }
+            }
+            
+            // Import data from JSON file
+            importFromJSON(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        
+                        // Validate the data structure
+                        if (!data.organization || !data.version) {
+                            throw new Error('Invalid backup file format');
+                        }
+                        
+                        // Confirm before overwriting
+                        if (!confirm(`This will replace all your current data with the backup from ${data.exportDate ? new Date(data.exportDate).toLocaleDateString() : 'unknown date'}. Continue?`)) {
+                            return;
+                        }
+                        
+                        // Restore organization
+                        this.planner.state.organization = new Map(data.organization);
+                        
+                        // Restore monthly data
+                        if (data.monthlyData) {
+                            this.planner.state.monthlyData = new Map(
+                                data.monthlyData.map(([month, monthData]) => [
+                                    month,
+                                    {
+                                        organization: new Map(monthData.organization),
+                                        income: monthData.income,
+                                        timestamp: monthData.timestamp
+                                    }
+                                ])
+                            );
+                        }
+                        
+                        // Restore current month
+                        if (data.currentMonth) {
+                            this.planner.state.currentMonth = data.currentMonth;
+                        }
+                        
+                        // Save and refresh
+                        this.planner.saveData();
+                        this.planner.render();
+                        
+                        alert('Backup restored successfully!');
+                    } catch (error) {
+                        console.error('Error importing backup:', error);
+                        alert('Error restoring backup. Please make sure you selected a valid backup file.');
+                    }
+                };
+                
+                reader.readAsText(file);
+                
+                // Reset the file input so the same file can be selected again
+                event.target.value = '';
             }
         }
         

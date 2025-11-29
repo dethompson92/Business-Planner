@@ -2122,6 +2122,20 @@
                 // Requires 3+ qualified legs, with blocking logic
                 const depthBonus = this.calculateDepthBonusAmountForNode(perspectiveNode);
                 
+                // 8. PERFORMANCE PLUS (Core Plus)
+                // +3% on Ruby BV when Ruby PV is 10,000-14,999 (brings 25% to 28%)
+                let performancePlusBonus = 0;
+                if (performanceRate >= 0.25 && metrics.rubyPV >= 10000 && metrics.rubyPV < 15000) {
+                    performancePlusBonus = metrics.rubyBV * 0.03;
+                }
+                
+                // 9. PERFORMANCE ELITE (Core Plus)
+                // +6% on Ruby BV when Ruby PV is 15,000+ (brings 25% to 31%)
+                let performanceEliteBonus = 0;
+                if (performanceRate >= 0.25 && metrics.rubyPV >= 15000) {
+                    performanceEliteBonus = metrics.rubyBV * 0.06;
+                }
+                
                 // Calculate potential Leadership Bonus (what you WOULD earn with full side volume)
                 // This is used for the warning display
                 let potentialLeadershipBonus = 0;
@@ -2137,7 +2151,7 @@
                 
                 // Calculate totals
                 const coreTotal = performanceBonus + differentialBonus + leadershipBonus + rubyBonus + retailMargin + depthBonus;
-                const corePlusTotal = customerSalesIncentive;
+                const corePlusTotal = customerSalesIncentive + performancePlusBonus + performanceEliteBonus;
                 const total = coreTotal + corePlusTotal;
                 
                 return {
@@ -2151,6 +2165,8 @@
                     
                     // Core Plus Incentives
                     customerSalesIncentive,
+                    performancePlusBonus,
+                    performanceEliteBonus,
                     
                     // Totals
                     coreTotal,
@@ -2587,6 +2603,8 @@
                     rubyBonus: 0,
                     retailMargin: 0,
                     customerSalesIncentive: 0,
+                    performancePlusBonus: 0,
+                    performanceEliteBonus: 0,
                     coreTotal: 0,
                     corePlusTotal: 0,
                     total: 0,
@@ -5000,10 +5018,88 @@
                     </div>
                 `;
                 
-                // 5. Depth Bonus
+                // 5. Performance Plus (Core Plus - 28% level)
+                const perfPlusQualified = yourLevel >= 25 && income.rubyPV >= 10000 && income.rubyPV < 15000;
                 html += `
                     <div class="border-b pb-4">
-                        <h4 class="font-bold mb-3">5️⃣ Depth Bonus (Emerald+ Level)</h4>
+                        <h4 class="font-bold mb-3">5️⃣ Performance Plus (+3% = 28% Level)</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="text-xs text-gray-500 mb-2">
+                                Additional 3% on Side Volume BV when at 25% level AND Side Volume is 10,000-14,999 PV. Brings effective rate from 25% to 28%.
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Performance Level:</span>
+                                <span class="font-mono ${yourLevel >= 25 ? 'text-green-600' : 'text-red-600'}">${yourLevel}% ${yourLevel >= 25 ? '✓' : '(need 25%)'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Side Volume PV:</span>
+                                <span class="font-mono ${income.rubyPV >= 10000 ? 'text-green-600' : 'text-red-600'}">${income.rubyPV.toFixed(0)} ${income.rubyPV >= 10000 ? (income.rubyPV < 15000 ? '✓ (10K-15K range)' : '(15K+ = Elite)') : '(need 10,000)'}</span>
+                            </div>
+                            ${perfPlusQualified ? `
+                                <div class="flex justify-between">
+                                    <span>Side Volume BV:</span>
+                                    <span class="font-mono">${income.rubyBV.toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between font-bold text-green-600 pt-2 border-t">
+                                    <span>Calculation: ${income.rubyBV.toFixed(2)} × 3% =</span>
+                                    <span>$${income.performancePlusBonus.toFixed(2)}</span>
+                                </div>
+                                <div class="text-xs text-purple-600 mt-2">
+                                    📈 Effective Rate: 25% + 3% = <strong>28%</strong> on Side Volume
+                                </div>
+                            ` : `
+                                <div class="flex justify-between font-bold text-gray-400 pt-2 border-t">
+                                    <span>Performance Plus:</span>
+                                    <span>$0.00</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+                
+                // 6. Performance Elite (Core Plus - 31% level)
+                const perfEliteQualified = yourLevel >= 25 && income.rubyPV >= 15000;
+                html += `
+                    <div class="border-b pb-4">
+                        <h4 class="font-bold mb-3">6️⃣ Performance Elite (+6% = 31% Level)</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="text-xs text-gray-500 mb-2">
+                                Additional 6% on Side Volume BV when at 25% level AND Side Volume is 15,000+ PV. Brings effective rate from 25% to 31%.
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Performance Level:</span>
+                                <span class="font-mono ${yourLevel >= 25 ? 'text-green-600' : 'text-red-600'}">${yourLevel}% ${yourLevel >= 25 ? '✓' : '(need 25%)'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Side Volume PV:</span>
+                                <span class="font-mono ${income.rubyPV >= 15000 ? 'text-green-600' : 'text-red-600'}">${income.rubyPV.toFixed(0)} ${income.rubyPV >= 15000 ? '✓' : '(need 15,000)'}</span>
+                            </div>
+                            ${perfEliteQualified ? `
+                                <div class="flex justify-between">
+                                    <span>Side Volume BV:</span>
+                                    <span class="font-mono">${income.rubyBV.toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between font-bold text-green-600 pt-2 border-t">
+                                    <span>Calculation: ${income.rubyBV.toFixed(2)} × 6% =</span>
+                                    <span>$${income.performanceEliteBonus.toFixed(2)}</span>
+                                </div>
+                                <div class="text-xs text-purple-600 mt-2">
+                                    📈 Effective Rate: 25% + 6% = <strong>31%</strong> on Side Volume
+                                </div>
+                            ` : `
+                                <div class="flex justify-between font-bold text-gray-400 pt-2 border-t">
+                                    <span>Performance Elite:</span>
+                                    <span>$0.00</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+                
+                // 7. Depth Bonus
+                html += `
+                    <div class="border-b pb-4">
+                        <h4 class="font-bold mb-3">7️⃣ Depth Bonus (Emerald+ Level)</h4>
                         <div class="space-y-2 text-sm">
                             <div class="text-xs text-gray-500 mb-2">
                                 1% on qualified legs at Level 2+. Requires 3+ qualified frontline legs (Emerald qualification).
@@ -5020,10 +5116,10 @@
                     </div>
                 `;
                 
-                // 6. Retail Margin & CSI
+                // 8. Retail Margin & CSI
                 html += `
                     <div class="border-b pb-4">
-                        <h4 class="font-bold mb-3">6️⃣ Retail & Customer Incentives</h4>
+                        <h4 class="font-bold mb-3">8️⃣ Retail & Customer Incentives</h4>
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
                                 <span>Retail Margin (10% of personal BV):</span>
@@ -5037,13 +5133,30 @@
                     </div>
                 `;
                 
+                // Calculate effective rate for display
+                let effectiveRate = yourLevel;
+                let effectiveRateNote = '';
+                if (perfEliteQualified) {
+                    effectiveRate = 31;
+                    effectiveRateNote = '(25% + 6% Elite)';
+                } else if (perfPlusQualified) {
+                    effectiveRate = 28;
+                    effectiveRateNote = '(25% + 3% Plus)';
+                }
+                
                 // Income Summary
                 html += `
                     <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4">
                         <h4 class="font-bold mb-3 text-green-800">💰 Income Summary</h4>
+                        ${effectiveRateNote ? `
+                            <div class="bg-purple-100 text-purple-800 rounded p-2 mb-3 text-sm font-semibold text-center">
+                                📈 Effective Performance Rate: ${effectiveRate}% ${effectiveRateNote}
+                            </div>
+                        ` : ''}
                         <div class="space-y-2 text-sm">
+                            <div class="font-semibold text-gray-600 border-b pb-1 mb-1">Core Plan Bonuses:</div>
                             <div class="flex justify-between">
-                                <span>Performance Bonus:</span>
+                                <span>Performance Bonus (${yourLevel}% on Side Vol):</span>
                                 <span class="font-mono">$${income.performanceBonus.toFixed(2)}</span>
                             </div>
                             <div class="flex justify-between">
@@ -5051,11 +5164,11 @@
                                 <span class="font-mono">$${income.differentialBonus.toFixed(2)}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span>Leadership Bonus:</span>
+                                <span>Leadership Bonus (6%):</span>
                                 <span class="font-mono">$${income.leadershipBonus.toFixed(2)}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span>Ruby Bonus:</span>
+                                <span>Ruby Bonus (2%):</span>
                                 <span class="font-mono">$${income.rubyBonus.toFixed(2)}</span>
                             </div>
                             <div class="flex justify-between">
@@ -5066,10 +5179,21 @@
                                 <span>Retail Margin:</span>
                                 <span class="font-mono">$${income.retailMargin.toFixed(2)}</span>
                             </div>
+                            
+                            <div class="font-semibold text-gray-600 border-b pb-1 mb-1 mt-3">Core Plus Incentives:</div>
+                            <div class="flex justify-between ${income.performancePlusBonus > 0 ? 'text-purple-600 font-semibold' : ''}">
+                                <span>Performance Plus (+3%):</span>
+                                <span class="font-mono">$${income.performancePlusBonus.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between ${income.performanceEliteBonus > 0 ? 'text-purple-600 font-semibold' : ''}">
+                                <span>Performance Elite (+6%):</span>
+                                <span class="font-mono">$${income.performanceEliteBonus.toFixed(2)}</span>
+                            </div>
                             <div class="flex justify-between">
                                 <span>Customer Sales Incentive:</span>
                                 <span class="font-mono">$${income.customerSalesIncentive.toFixed(2)}</span>
                             </div>
+                            
                             <div class="flex justify-between items-center pt-3 mt-3 border-t-2 border-green-300">
                                 <span class="text-xl font-bold text-green-800">Total Monthly Income:</span>
                                 <span class="text-3xl font-bold text-green-600">$${income.total.toFixed(2)}</span>

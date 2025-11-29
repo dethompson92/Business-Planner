@@ -5254,29 +5254,33 @@
                 
                 // Check if embedded data script already exists
                 let modifiedHtml = html;
-                const existingDataPattern = /<script id="embedded-versions-data" type="application\/json">[\s\S]*?<\/script>/;
-                const newDataScript = `<script id="embedded-versions-data" type="application/json">${versionsData}</script>`;
+                // Use string concatenation to avoid browser parsing these as actual tags
+                const scriptEnd = '<' + '/script>';
+                const headEnd = '<' + '/head>';
+                const existingDataPattern = new RegExp('<script id="embedded-versions-data" type="application/json">[\\s\\S]*?' + scriptEnd);
+                const newDataScript = '<script id="embedded-versions-data" type="application/json">' + versionsData + scriptEnd;
                 
                 if (existingDataPattern.test(modifiedHtml)) {
                     // Replace existing
                     modifiedHtml = modifiedHtml.replace(existingDataPattern, newDataScript);
                 } else {
-                    // Add before closing </head>
-                    modifiedHtml = modifiedHtml.replace('</head>', `${newDataScript}\n</head>`);
+                    // Add before closing head tag
+                    modifiedHtml = modifiedHtml.replace(headEnd, newDataScript + '\n' + headEnd);
                 }
                 
                 // Create and download the file
-                const blob = new Blob([`<!DOCTYPE html>\n${modifiedHtml}`], { type: 'text/html' });
+                const doctype = '<' + '!DOCTYPE html>\n';
+                const blob = new Blob([doctype + modifiedHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Amway-Business-Planner-${new Date().toISOString().split('T')[0]}.html`;
+                a.download = 'Amway-Business-Planner-' + new Date().toISOString().split('T')[0] + '.html';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 
-                alert(`HTML file downloaded with ${this.state.savedVersions.length} version(s) embedded.\n\nWhen you or anyone else opens this file, all saved versions will be available in the Version Manager.`);
+                alert('HTML file downloaded with ' + this.state.savedVersions.length + ' version(s) embedded.\n\nWhen you or anyone else opens this file, all saved versions will be available in the Version Manager.');
             }
             
             // ============================================

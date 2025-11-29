@@ -4769,38 +4769,85 @@
             
             generateDetailedIncomeBreakdown() {
                 const income = this.calculateIncome();
-                const root = this.state.organization.get('root');
+                const perspectiveNodeId = income.perspectiveNodeId || 'root';
+                const perspectiveNode = this.state.organization.get(perspectiveNodeId);
                 const yourLevel = this.getPerformanceLevel(income.totalPV);
+                
+                // Count qualified legs
+                let qualifiedLegCount = 0;
+                let nonQualifiedLegPV = 0;
+                let nonQualifiedLegBV = 0;
+                if (perspectiveNode.children) {
+                    perspectiveNode.children.forEach(childId => {
+                        const legPV = this.calculateGroupPV(childId);
+                        const legBV = this.calculateGroupBV(childId);
+                        if (legPV >= 7500) {
+                            qualifiedLegCount++;
+                        } else {
+                            nonQualifiedLegPV += legPV;
+                            nonQualifiedLegBV += legBV;
+                        }
+                    });
+                }
                 
                 let html = `
                     <div class="space-y-6">
-                        <!-- Personal Performance -->
+                        <!-- Volume Summary -->
+                        <div class="border-b pb-4 bg-blue-50 rounded-lg p-4 -mx-2">
+                            <h4 class="font-bold mb-3 text-blue-800">📊 Volume Summary</h4>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div class="text-gray-600">Personal PV:</div>
+                                    <div class="font-mono font-bold">${perspectiveNode.pv}</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-600">Personal BV:</div>
+                                    <div class="font-mono font-bold">${perspectiveNode.bv.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-600">Total Group PV:</div>
+                                    <div class="font-mono font-bold">${income.totalPV.toFixed(0)}</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-600">Total Group BV:</div>
+                                    <div class="font-mono font-bold">${income.totalBV.toFixed(2)}</div>
+                                </div>
+                                <div class="col-span-2 border-t pt-2 mt-2">
+                                    <div class="text-gray-600">Side Volume (Ruby) PV:</div>
+                                    <div class="font-mono font-bold text-purple-600">${income.rubyPV.toFixed(0)}</div>
+                                    <div class="text-xs text-gray-500 mt-1">= Personal (${perspectiveNode.pv}) + Non-Qualified Legs (${nonQualifiedLegPV.toFixed(0)})</div>
+                                </div>
+                                <div class="col-span-2">
+                                    <div class="text-gray-600">Side Volume (Ruby) BV:</div>
+                                    <div class="font-mono font-bold text-purple-600">${income.rubyBV.toFixed(2)}</div>
+                                    <div class="text-xs text-gray-500 mt-1">= Personal (${perspectiveNode.bv.toFixed(2)}) + Non-Qualified Legs (${nonQualifiedLegBV.toFixed(2)})</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-600">Qualified 25% Legs:</div>
+                                    <div class="font-mono font-bold text-green-600">${qualifiedLegCount}</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-600">Performance Level:</div>
+                                    <div class="font-mono font-bold text-blue-600">${yourLevel}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 1. Performance Bonus -->
                         <div class="border-b pb-4">
-                            <h4 class="font-bold mb-3">Your Personal Performance Bonus</h4>
+                            <h4 class="font-bold mb-3">1️⃣ Performance Bonus (on Side Volume)</h4>
                             <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span>Your Personal PV:</span>
-                                    <span class="font-mono">${root.pv}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Your Personal BV:</span>
-                                    <span class="font-mono">${root.bv.toFixed(2)}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Total Group PV:</span>
-                                    <span class="font-mono">${income.totalPV.toFixed(0)}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Side Volume PV:</span>
-                                    <span class="font-mono">${income.rubyPV.toFixed(0)}</span>
+                                <div class="text-xs text-gray-500 mb-2">
+                                    You earn Performance Bonus only on YOUR bonusable volume (Side Volume = personal + non-qualified legs).
+                                    Qualified 25% legs pay themselves, so they're excluded.
                                 </div>
                                 <div class="flex justify-between">
                                     <span>Side Volume BV:</span>
                                     <span class="font-mono">${income.rubyBV.toFixed(2)}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span>Performance Level:</span>
-                                    <span class="font-mono font-bold text-blue-600">${yourLevel}%</span>
+                                    <span>Your Performance Rate:</span>
+                                    <span class="font-mono">${yourLevel}%</span>
                                 </div>
                                 <div class="flex justify-between font-bold text-green-600 pt-2 border-t">
                                     <span>Calculation: ${income.rubyBV.toFixed(2)} × ${yourLevel}% =</span>
@@ -4810,27 +4857,34 @@
                         </div>
                 `;
                 
-                // Differential Bonuses
-                if (root.children && root.children.length > 0) {
+                // 2. Differential Bonuses
+                if (perspectiveNode.children && perspectiveNode.children.length > 0) {
+                    let totalDifferential = 0;
                     html += `
                         <div class="border-b pb-4">
-                            <h4 class="font-bold mb-3">Differential Bonuses (Frontline)</h4>
-                            <div class="space-y-3">
+                            <h4 class="font-bold mb-3">2️⃣ Differential Bonuses (on Non-Qualified Legs)</h4>
+                            <div class="text-xs text-gray-500 mb-2">
+                                Earned on legs below 25%. For 25% legs, differential = 0% (25% - 25%).
+                            </div>
+                            <div class="space-y-3 max-h-64 overflow-y-auto">
                     `;
                     
-                    root.children.forEach(childId => {
+                    perspectiveNode.children.forEach(childId => {
                         const child = this.state.organization.get(childId);
                         if (!child) return;
                         
                         const childGroupPV = this.calculateGroupPV(childId);
                         const childGroupBV = this.calculateGroupBV(childId);
                         const theirLevel = this.getPerformanceLevel(childGroupPV);
-                        const differential = yourLevel - theirLevel;
+                        const differential = Math.max(0, yourLevel - theirLevel);
                         const diffBonus = childGroupBV * (differential / 100);
+                        totalDifferential += diffBonus;
+                        
+                        const isQualified = childGroupPV >= 7500;
                         
                         html += `
-                            <div class="bg-gray-50 rounded-lg p-3">
-                                <div class="font-semibold mb-2">${child.name}</div>
+                            <div class="bg-gray-50 rounded-lg p-3 ${isQualified ? 'opacity-60' : ''}">
+                                <div class="font-semibold mb-2">${child.name} ${isQualified ? '<span class="text-xs text-green-600">(25% Qualified)</span>' : ''}</div>
                                 <div class="space-y-1 text-xs">
                                     <div class="flex justify-between">
                                         <span>Their Group PV:</span>
@@ -4848,7 +4902,7 @@
                                         <span>Differential:</span>
                                         <span class="font-mono">(${yourLevel}% - ${theirLevel}%) = ${differential}%</span>
                                     </div>
-                                    <div class="flex justify-between font-bold text-green-600">
+                                    <div class="flex justify-between font-bold ${diffBonus > 0 ? 'text-green-600' : 'text-gray-400'}">
                                         <span>Bonus: ${childGroupBV.toFixed(2)} × ${differential}% =</span>
                                         <span>$${diffBonus.toFixed(2)}</span>
                                     </div>
@@ -4859,31 +4913,167 @@
                     
                     html += `
                             </div>
+                            <div class="flex justify-between font-bold text-green-600 pt-3 mt-3 border-t">
+                                <span>Total Differential Bonus:</span>
+                                <span>$${totalDifferential.toFixed(2)}</span>
+                            </div>
                         </div>
                     `;
                 }
                 
-                // Additional Income Streams
+                // 3. Leadership Bonus
                 html += `
                     <div class="border-b pb-4">
-                        <h4 class="font-bold mb-3">Additional Income Streams</h4>
+                        <h4 class="font-bold mb-3">3️⃣ Leadership Bonus (6% on Qualified Legs)</h4>
                         <div class="space-y-2 text-sm">
-                            <div class="flex justify-between">
-                                <span>Retail Margin (10% of customer sales):</span>
-                                <span class="font-bold">$${income.retailMargin.toFixed(2)}</span>
+                            <div class="text-xs text-gray-500 mb-2">
+                                Earn 6% on each qualified 25% leg's Group BV. Requires Side Volume ≥ 2,500 PV to qualify.
                             </div>
                             <div class="flex justify-between">
-                                <span>Customer Sales Incentive (up to $75):</span>
+                                <span>Your Side Volume PV:</span>
+                                <span class="font-mono ${income.rubyPV >= 2500 ? 'text-green-600' : 'text-red-600'}">${income.rubyPV.toFixed(0)} ${income.rubyPV >= 2500 ? '✓' : '(need 2,500)'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Qualified Legs:</span>
+                                <span class="font-mono">${qualifiedLegCount}</span>
+                            </div>
+                `;
+                
+                if (qualifiedLegCount > 0 && income.rubyPV >= 2500) {
+                    let leadershipTotal = 0;
+                    html += `<div class="space-y-2 mt-2">`;
+                    perspectiveNode.children.forEach(childId => {
+                        const legPV = this.calculateGroupPV(childId);
+                        const legBV = this.calculateGroupBV(childId);
+                        const child = this.state.organization.get(childId);
+                        if (legPV >= 7500) {
+                            const bonus = legBV * 0.06;
+                            leadershipTotal += bonus;
+                            html += `
+                                <div class="flex justify-between text-xs bg-green-50 p-2 rounded">
+                                    <span>${child ? child.name : 'Leg'}: ${legBV.toFixed(2)} × 6% =</span>
+                                    <span class="font-bold">$${bonus.toFixed(2)}</span>
+                                </div>
+                            `;
+                        }
+                    });
+                    html += `</div>`;
+                }
+                
+                html += `
+                            <div class="flex justify-between font-bold text-green-600 pt-2 border-t">
+                                <span>Leadership Bonus:</span>
+                                <span>$${income.leadershipBonus.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // 4. Ruby Bonus
+                html += `
+                    <div class="border-b pb-4">
+                        <h4 class="font-bold mb-3">4️⃣ Ruby Bonus (2% at 15,000+ Side PV)</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="text-xs text-gray-500 mb-2">
+                                Earn 2% of Side Volume BV when Side Volume reaches 15,000 PV.
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Side Volume PV:</span>
+                                <span class="font-mono ${income.rubyPV >= 15000 ? 'text-green-600' : 'text-red-600'}">${income.rubyPV.toFixed(0)} ${income.rubyPV >= 15000 ? '✓' : '(need 15,000)'}</span>
+                            </div>
+                            ${income.rubyPV >= 15000 ? `
+                                <div class="flex justify-between">
+                                    <span>Side Volume BV:</span>
+                                    <span class="font-mono">${income.rubyBV.toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between font-bold text-green-600 pt-2 border-t">
+                                    <span>Calculation: ${income.rubyBV.toFixed(2)} × 2% =</span>
+                                    <span>$${income.rubyBonus.toFixed(2)}</span>
+                                </div>
+                            ` : `
+                                <div class="flex justify-between font-bold text-gray-400 pt-2 border-t">
+                                    <span>Ruby Bonus:</span>
+                                    <span>$0.00</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+                
+                // 5. Depth Bonus
+                html += `
+                    <div class="border-b pb-4">
+                        <h4 class="font-bold mb-3">5️⃣ Depth Bonus (Emerald+ Level)</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="text-xs text-gray-500 mb-2">
+                                1% on qualified legs at Level 2+. Requires 3+ qualified frontline legs (Emerald qualification).
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Qualified Frontline Legs:</span>
+                                <span class="font-mono ${qualifiedLegCount >= 3 ? 'text-green-600' : 'text-red-600'}">${qualifiedLegCount} ${qualifiedLegCount >= 3 ? '✓' : '(need 3)'}</span>
+                            </div>
+                            <div class="flex justify-between font-bold ${income.depthBonus > 0 ? 'text-green-600' : 'text-gray-400'} pt-2 border-t">
+                                <span>Depth Bonus:</span>
+                                <span>$${income.depthBonus.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // 6. Retail Margin & CSI
+                html += `
+                    <div class="border-b pb-4">
+                        <h4 class="font-bold mb-3">6️⃣ Retail & Customer Incentives</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span>Retail Margin (10% of personal BV):</span>
+                                <span class="font-mono">${perspectiveNode.bv.toFixed(2)} × 10% = <span class="font-bold">$${income.retailMargin.toFixed(2)}</span></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Customer Sales Incentive (max $75):</span>
                                 <span class="font-bold">$${income.customerSalesIncentive.toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Total -->
-                    <div class="bg-green-50 rounded-lg p-4">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xl font-bold text-green-800">Total Monthly Income:</span>
-                            <span class="text-3xl font-bold text-green-600">$${income.total.toFixed(2)}</span>
+                `;
+                
+                // Income Summary
+                html += `
+                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4">
+                        <h4 class="font-bold mb-3 text-green-800">💰 Income Summary</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span>Performance Bonus:</span>
+                                <span class="font-mono">$${income.performanceBonus.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Differential Bonus:</span>
+                                <span class="font-mono">$${income.differentialBonus.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Leadership Bonus:</span>
+                                <span class="font-mono">$${income.leadershipBonus.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Ruby Bonus:</span>
+                                <span class="font-mono">$${income.rubyBonus.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Depth Bonus:</span>
+                                <span class="font-mono">$${income.depthBonus.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Retail Margin:</span>
+                                <span class="font-mono">$${income.retailMargin.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Customer Sales Incentive:</span>
+                                <span class="font-mono">$${income.customerSalesIncentive.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between items-center pt-3 mt-3 border-t-2 border-green-300">
+                                <span class="text-xl font-bold text-green-800">Total Monthly Income:</span>
+                                <span class="text-3xl font-bold text-green-600">$${income.total.toFixed(2)}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

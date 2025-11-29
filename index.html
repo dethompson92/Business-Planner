@@ -4,11 +4,86 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Business Planner</title>
-  <meta http-equiv="refresh" content="0; url=amway-planner.html" />
-  <style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:2rem;text-align:center}</style>
+  <meta name="description" content="Amway Business Planner — single-file web app" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #0b1220;
+      --card: #0f172a;
+      --muted: #94a3b8;
+      --accent: #10b981;
+      --accent-2: #6366f1;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100svh; display:grid; place-items:center;
+      background: radial-gradient(1200px 600px at 30% -10%, #1f2937, transparent),
+                  radial-gradient(1000px 500px at 80% 10%, #111827, transparent),
+                  var(--bg);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: #e5e7eb;
+    }
+    .shell{width:min(980px,92%); padding:32px; border-radius:20px; background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 60px rgba(0,0,0,0.35)}
+    h1{font-size: clamp(28px, 4vw, 40px); margin:0 0 10px; font-weight:800; letter-spacing:-0.02em}
+    p.lead{margin:0 0 26px; color:var(--muted)}
+    .cta{display:flex; flex-wrap:wrap; gap:14px; margin-top:18px}
+    a.btn{appearance:none; text-decoration:none; display:inline-flex; align-items:center; gap:10px; padding:14px 18px; border-radius:12px; font-weight:600; letter-spacing:0.2px; transition:transform .06s ease, opacity .2s ease, box-shadow .2s ease}
+    a.btn:hover{transform: translateY(-1px)}
+    a.primary{background: linear-gradient(135deg, var(--accent), #34d399); color:#052e27; box-shadow: 0 8px 20px rgba(16,185,129,0.25)}
+    a.secondary{background:linear-gradient(135deg, #334155, #1f2937); color:#e2e8f0; border:1px solid rgba(255,255,255,0.08)}
+    .meta{margin-top:26px; font-size:13px; color:var(--muted)}
+    .pill{display:inline-block; padding:6px 10px; border-radius:9999px; font-size:12px; background:rgba(99,102,241,0.15); color:#c7d2fe; border:1px solid rgba(99,102,241,0.25)}
+    .grid{display:grid; grid-template-columns: 1.2fr 0.8fr; gap:22px; align-items:center}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:18px}
+    ul{margin:12px 0 0 0; padding:0 0 0 18px; color:#cbd5e1}
+    li{margin:6px 0}
+    @media (max-width: 820px){.grid{grid-template-columns: 1fr}}
+  </style>
+  <script>
+    // Optional: if someone hits the root with ?download=1, force download the app
+    document.addEventListener('DOMContentLoaded', () => {
+      const url = new URL(location.href);
+      if (url.searchParams.get('download') === '1') {
+        const a = document.createElement('a');
+        a.href = 'amway-planner.html';
+        a.download = 'Business-Planner.html';
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+    });
+  </script>
+  <meta name="robots" content="index,follow" />
+  <meta name="color-scheme" content="dark light" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ccircle cx='64' cy='64' r='64' fill='%2310b981'/%3E%3Cpath d='M32 70l18-28 16 24 12-18 18 22' stroke='white' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval' data:; img-src 'self' data: https:;" />
+  <!-- Note: the app itself is a single HTML file (amway-planner.html) -->
+  <!-- This landing page provides quick actions without auto-redirect. -->
+  
 </head>
 <body>
-  <h1>Redirecting…</h1>
-  <p>If you are not redirected automatically, <a href="amway-planner.html">click here to open the app</a>.</p>
+  <main class="shell">
+    <div class="grid">
+      <section>
+        <span class="pill">Single‑file web app</span>
+        <h1>Business Planner</h1>
+        <p class="lead">Plan, visualize, and calculate income for your organization. Side Volume, leadership and performance bonuses, depth logic, monthly projections, and more — all in one self‑contained HTML.</p>
+        <div class="cta">
+          <a class="btn primary" href="amway-planner.html" rel="noopener">🚀 Open App</a>
+          <a class="btn secondary" href="amway-planner.html" download="Business-Planner.html" rel="noopener">⬇️ Download Self‑Contained HTML</a>
+        </div>
+        <div class="meta">No install needed. Works offline after first load. Share the downloaded HTML to run anywhere.</div>
+      </section>
+      <aside class="card">
+        <div style="font-weight:700; margin-bottom:8px; color:#e2e8f0">What’s inside</div>
+        <ul>
+          <li>Accurate Side Volume and performance bonus calculations</li>
+          <li>Leadership (6%), Ruby (2%), Performance Plus/Elite (+3%/+6%)</li>
+          <li>Depth bonus logic (Emerald+), customer incentives</li>
+          <li>Income perspective by IBO; version save/restore</li>
+          <li>Layer‑by‑layer org expansion for large teams</li>
+        </ul>
+      </aside>
+    </div>
+  </main>
 </body>
 </html>

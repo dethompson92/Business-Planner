@@ -1,0 +1,13 @@
+# Private reference files - keep locally, not on GitHub
+*.pdf
+*.apk
+Genspark*.md
+Genspark*.pdf
+
+# Backup files
+*.json
+Amway_Backup*
+
+# OS files
+.DS_Store
+Thumbs.db

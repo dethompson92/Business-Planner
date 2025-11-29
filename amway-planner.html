@@ -1943,26 +1943,51 @@
                 // Calculate all the key metrics
                 const metrics = this.calculateAllMetrics(root);
                 
+                /**
+                 * CORRECT AMWAY INCOME CALCULATION
+                 * 
+                 * The key insight: You earn Performance Bonus ONLY on your "bonusable" volume:
+                 * - Your personal PV/BV
+                 * - Volume from NON-qualified legs (legs under 7500 PV)
+                 * 
+                 * For 25% qualified legs:
+                 * - They earn their own 25% Performance Bonus
+                 * - You earn 0% Differential (25% - 25% = 0%)
+                 * - You MAY earn 6% Leadership Bonus IF you have sufficient Side Volume
+                 */
+                
                 // 1. PERFORMANCE BONUS (Core Plan)
-                // Based on Group PV bracket × Group BV
+                // Based on YOUR personal rate × YOUR bonusable volume (Side Volume only!)
+                // Your rate is determined by total Group PV, but you only earn on Side Volume
                 const performanceRate = this.getPerformanceLevel(metrics.groupPV) / 100;
-                const performanceBonus = metrics.groupBV * performanceRate;
+                
+                // Performance Bonus is ONLY on Side Volume (personal + non-qualified legs)
+                // NOT on 25% qualified legs - they pay themselves
+                const performanceBonus = metrics.rubyBV * performanceRate;
                 
                 // 2. DIFFERENTIAL BONUS (Core Plan)
-                // Paid on the difference between your % and each frontline's %
+                // Paid on NON-qualified legs only (difference between your % and their %)
+                // For 25% legs, differential is 0% (25% - 25% = 0%), so no differential earned
                 let differentialBonus = 0;
                 if (root.children && root.children.length > 0) {
                     root.children.forEach(childId => {
                         const childGroupPV = this.calculateGroupPV(childId);
                         const childGroupBV = this.calculateGroupBV(childId);
                         const childRate = this.getPerformanceLevel(childGroupPV) / 100;
-                        const differential = Math.max(0, performanceRate - childRate);
-                        differentialBonus += childGroupBV * differential;
+                        
+                        // Only calculate differential on NON-qualified legs
+                        // Qualified legs (25%) give 0 differential since 25% - 25% = 0%
+                        if (childGroupPV < 7500) {
+                            const differential = Math.max(0, performanceRate - childRate);
+                            differentialBonus += childGroupBV * differential;
+                        }
+                        // Note: For 25% legs, you could earn Leadership Bonus instead (see below)
                     });
                 }
                 
                 // 3. LEADERSHIP BONUS (Core Plan)
-                // 6% on qualified 25% legs, computed bottom-up
+                // 6% on qualified 25% legs - BUT requires sufficient Side Volume!
+                // Side Volume must be >= 2,500 PV to earn ANY Leadership Bonus
                 let leadershipBonus = 0;
                 if (performanceRate >= 0.25 && metrics.rubyPV >= 2500) {
                     leadershipBonus = this.calculateLeadershipBonusAmount(root, metrics);
@@ -1994,6 +2019,19 @@
                 // 1% on qualified downlines starting from Level 2
                 // Requires 3+ qualified legs, with blocking logic
                 const depthBonus = this.calculateDepthBonusAmount(root);
+                
+                // Calculate potential Leadership Bonus (what you WOULD earn with full side volume)
+                // This is used for the warning display
+                let potentialLeadershipBonus = 0;
+                if (metrics.qualifiedLegs > 0) {
+                    root.children.forEach(childId => {
+                        const legPV = this.calculateGroupPV(childId);
+                        const legBV = this.calculateGroupBV(childId);
+                        if (legPV >= 7500) {
+                            potentialLeadershipBonus += legBV * 0.06;
+                        }
+                    });
+                }
                 
                 // Calculate totals
                 const coreTotal = performanceBonus + differentialBonus + leadershipBonus + rubyBonus + retailMargin + depthBonus;
@@ -2028,7 +2066,8 @@
                     personalBV: yourPersonalBV,
                     qualifiedLegs: metrics.qualifiedLegs,
                     performanceLevel: performanceRate * 100,
-                    vcsCompliantBV: metrics.vcsCompliantBV
+                    vcsCompliantBV: metrics.vcsCompliantBV,
+                    potentialLeadershipBonus
                 };
             }
             
@@ -3138,22 +3177,48 @@
                 const summaryDiv = document.getElementById('income-summary');
                 const totalDiv = document.getElementById('total-income');
                 
+                // Check for side volume warnings
+                const sidePV = income.sidePV || income.rubyPV;
+                const hasQualifiedLegs = income.qualifiedLegs > 0;
+                let sideVolumeWarning = '';
+                
+                if (hasQualifiedLegs && sidePV < 2500) {
+                    sideVolumeWarning = `
+                        <div class="bg-red-100 text-red-700 p-2 rounded text-xs mb-2">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            <strong>Side Volume Too Low!</strong> You have ${income.qualifiedLegs} qualified leg(s) but only ${sidePV.toLocaleString()} Side PV. 
+                            Need 2,500+ Side PV to earn Leadership Bonus. Currently losing $${(income.potentialLeadershipBonus || 0).toFixed(2)}/month.
+                        </div>
+                    `;
+                } else if (hasQualifiedLegs && sidePV < 7500) {
+                    const shortfall = 7500 - sidePV;
+                    const passUpAmount = shortfall * 3.43 * 0.06;
+                    sideVolumeWarning = `
+                        <div class="bg-yellow-100 text-yellow-700 p-2 rounded text-xs mb-2">
+                            <i class="fas fa-exclamation-circle mr-1"></i>
+                            <strong>Partial Side Volume:</strong> ${sidePV.toLocaleString()} / 7,500 PV. 
+                            Passing up ~$${passUpAmount.toFixed(2)}/month to upline.
+                        </div>
+                    `;
+                }
+                
                 if (summaryDiv) {
                     summaryDiv.innerHTML = `
+                        ${sideVolumeWarning}
                         <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
                             <span>Group PV: ${income.totalPV.toLocaleString()}</span> | 
-                            <span>Side PV: ${(income.sidePV || income.rubyPV).toLocaleString()}</span> | 
+                            <span>Side PV: ${sidePV.toLocaleString()}</span> | 
                             <span>Qualified Legs: ${income.qualifiedLegs}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>Performance Bonus:</span>
+                            <span>Performance Bonus (on Side Vol):</span>
                             <span class="font-semibold">$${income.performanceBonus.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
                             <span>Differential Bonus:</span>
                             <span class="font-semibold">$${income.differentialBonus.toFixed(2)}</span>
                         </div>
-                        <div class="flex justify-between">
+                        <div class="flex justify-between ${income.leadershipBonus === 0 && hasQualifiedLegs ? 'text-red-500' : ''}">
                             <span>Leadership Bonus (6%):</span>
                             <span class="font-semibold">$${income.leadershipBonus.toFixed(2)}</span>
                         </div>

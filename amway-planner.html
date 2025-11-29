@@ -4728,11 +4728,19 @@
                                     <span class="font-mono">${income.totalPV.toFixed(0)}</span>
                                 </div>
                                 <div class="flex justify-between">
+                                    <span>Side Volume PV:</span>
+                                    <span class="font-mono">${income.rubyPV.toFixed(0)}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Side Volume BV:</span>
+                                    <span class="font-mono">${income.rubyBV.toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between">
                                     <span>Performance Level:</span>
                                     <span class="font-mono font-bold text-blue-600">${yourLevel}%</span>
                                 </div>
                                 <div class="flex justify-between font-bold text-green-600 pt-2 border-t">
-                                    <span>Calculation: ${income.totalBV.toFixed(2)} × ${yourLevel}% =</span>
+                                    <span>Calculation: ${income.rubyBV.toFixed(2)} × ${yourLevel}% =</span>
                                     <span>$${income.performanceBonus.toFixed(2)}</span>
                                 </div>
                             </div>

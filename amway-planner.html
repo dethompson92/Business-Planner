@@ -628,7 +628,8 @@
                     isPanning: false,
                     panStartX: 0,
                     panStartY: 0,
-                    collapsedNodes: new Set()
+                    collapsedNodes: new Set(),
+                    savedVersions: [] // Array of saved versions with timestamps
                 };
                 
                 // Chart instances for cleanup
@@ -715,8 +716,11 @@
                                     <button onclick="app.exportManager.triggerImport()" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors" title="Restore from backup">
                                         <i class="fas fa-upload mr-2"></i><span class="hidden sm:inline">Restore</span>
                                     </button>
-                                    <button onclick="app.saveData()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                        <i class="fas fa-save mr-2"></i><span class="hidden sm:inline">Save</span>
+                                    <button onclick="app.showVersionManager()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors" title="Manage saved versions">
+                                        <i class="fas fa-history mr-2"></i><span class="hidden sm:inline">Versions</span>
+                                    </button>
+                                    <button onclick="app.saveVersion()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors" title="Save current state as a version">
+                                        <i class="fas fa-save mr-2"></i><span class="hidden sm:inline">Save Version</span>
                                     </button>
                                 </div>
                                 <!-- Hidden file input for import -->
@@ -4940,13 +4944,14 @@
                         monthlyData: Array.from(this.state.monthlyData.entries()).map(([month, data]) => [
                             month,
                             {
-                                organization: Array.from(data.organization.entries()),
+                                organization: Array.from(data.organization ? data.organization.entries() : []),
                                 income: data.income,
                                 timestamp: data.timestamp
                             }
                         ]),
                         selectedNode: this.state.selectedNode,
                         currentMonth: this.state.currentMonth,
+                        savedVersions: this.state.savedVersions, // Include saved versions
                         lastSaved: new Date().toISOString()
                     };
                     
@@ -4960,6 +4965,9 @@
             
             loadSavedData() {
                 try {
+                    // First, load any embedded versions from the HTML file
+                    this.loadEmbeddedVersions();
+                    
                     const saved = localStorage.getItem('amwayBusinessPlanner');
                     if (!saved) return;
                     
@@ -4967,6 +4975,13 @@
                     
                     if (data.organization) {
                         this.state.organization = new Map(data.organization);
+                    }
+                    
+                    // Load saved versions from localStorage (merge with embedded)
+                    if (data.savedVersions && Array.isArray(data.savedVersions)) {
+                        const existingIds = new Set(this.state.savedVersions.map(v => v.id));
+                        const newVersions = data.savedVersions.filter(v => !existingIds.has(v.id));
+                        this.state.savedVersions = [...this.state.savedVersions, ...newVersions];
                     }
                     
                     if (data.monthlyData) {
@@ -4994,6 +5009,274 @@
                 } catch (error) {
                     console.error('Error loading saved data:', error);
                 }
+            }
+            
+            // ============================================
+            // VERSION MANAGEMENT SYSTEM
+            // ============================================
+            
+            /**
+             * Save current state as a new version
+             */
+            saveVersion(customName = null) {
+                const versionName = customName || prompt('Enter a name for this version:', `Version ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`);
+                
+                if (!versionName) return; // User cancelled
+                
+                const income = this.calculateIncome();
+                const version = {
+                    id: Date.now(),
+                    name: versionName,
+                    timestamp: new Date().toISOString(),
+                    organization: Array.from(this.state.organization.entries()),
+                    monthlyData: Array.from(this.state.monthlyData.entries()).map(([month, data]) => [
+                        month,
+                        {
+                            organization: Array.from(data.organization ? data.organization.entries() : []),
+                            income: data.income,
+                            timestamp: data.timestamp
+                        }
+                    ]),
+                    currentMonth: this.state.currentMonth,
+                    summary: {
+                        totalMembers: this.state.organization.size,
+                        totalPV: income.totalPV,
+                        totalIncome: income.total,
+                        qualifiedLegs: income.qualifiedLegs
+                    }
+                };
+                
+                this.state.savedVersions.push(version);
+                this.saveData(); // Save to localStorage
+                
+                alert(`Version "${versionName}" saved successfully!\n\nClick "Versions" to view all saved versions or download an HTML file with all versions embedded.`);
+            }
+            
+            /**
+             * Load a specific version
+             */
+            loadVersion(versionId) {
+                const version = this.state.savedVersions.find(v => v.id === versionId);
+                if (!version) {
+                    alert('Version not found');
+                    return;
+                }
+                
+                if (!confirm(`Load version "${version.name}"?\n\nThis will replace your current organization structure. Make sure to save your current work first if needed.`)) {
+                    return;
+                }
+                
+                try {
+                    this.state.organization = new Map(version.organization);
+                    
+                    if (version.monthlyData) {
+                        this.state.monthlyData = new Map(
+                            version.monthlyData.map(([month, monthData]) => [
+                                month,
+                                {
+                                    organization: new Map(monthData.organization || []),
+                                    income: monthData.income,
+                                    timestamp: monthData.timestamp
+                                }
+                            ])
+                        );
+                    }
+                    
+                    if (version.currentMonth) {
+                        this.state.currentMonth = version.currentMonth;
+                    }
+                    
+                    this.state.selectedNode = null;
+                    this.state.incomePerspectiveNode = 'root';
+                    
+                    this.render();
+                    this.closeVersionManager();
+                    
+                    alert(`Version "${version.name}" loaded successfully!`);
+                } catch (error) {
+                    console.error('Error loading version:', error);
+                    alert('Error loading version. The data may be corrupted.');
+                }
+            }
+            
+            /**
+             * Delete a specific version
+             */
+            deleteVersion(versionId) {
+                const version = this.state.savedVersions.find(v => v.id === versionId);
+                if (!version) return;
+                
+                if (!confirm(`Delete version "${version.name}"?\n\nThis cannot be undone.`)) {
+                    return;
+                }
+                
+                this.state.savedVersions = this.state.savedVersions.filter(v => v.id !== versionId);
+                this.saveData();
+                this.showVersionManager(); // Refresh the modal
+            }
+            
+            /**
+             * Show version manager modal
+             */
+            showVersionManager() {
+                // Load any embedded versions first
+                this.loadEmbeddedVersions();
+                
+                const versions = this.state.savedVersions;
+                
+                let versionsHtml = '';
+                if (versions.length === 0) {
+                    versionsHtml = `
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-folder-open text-4xl mb-4"></i>
+                            <p>No saved versions yet.</p>
+                            <p class="text-sm mt-2">Click "Save Version" to create your first version.</p>
+                        </div>
+                    `;
+                } else {
+                    versionsHtml = versions.map(v => {
+                        const date = new Date(v.timestamp);
+                        return `
+                            <div class="border rounded-lg p-4 mb-3 hover:bg-gray-50 transition-colors">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-gray-800">${v.name}</h4>
+                                        <p class="text-sm text-gray-500">${date.toLocaleDateString()} at ${date.toLocaleTimeString()}</p>
+                                        <div class="text-xs text-gray-400 mt-1">
+                                            <span class="mr-3"><i class="fas fa-users mr-1"></i>${v.summary?.totalMembers || '?'} members</span>
+                                            <span class="mr-3"><i class="fas fa-chart-line mr-1"></i>${(v.summary?.totalPV || 0).toLocaleString()} PV</span>
+                                            <span><i class="fas fa-dollar-sign mr-1"></i>$${(v.summary?.totalIncome || 0).toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2 ml-4">
+                                        <button onclick="app.loadVersion(${v.id})" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                            <i class="fas fa-upload mr-1"></i>Load
+                                        </button>
+                                        <button onclick="app.deleteVersion(${v.id})" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm">
+                                            <i class="fas fa-trash mr-1"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                const modal = document.createElement('div');
+                modal.id = 'version-manager-modal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+                        <div class="p-6 border-b flex justify-between items-center">
+                            <h2 class="text-2xl font-bold text-gray-800">
+                                <i class="fas fa-history mr-2 text-indigo-600"></i>Version Manager
+                            </h2>
+                            <button onclick="app.closeVersionManager()" class="text-gray-400 hover:text-gray-600 text-2xl">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="p-6 overflow-y-auto flex-1">
+                            <div class="mb-4 p-4 bg-blue-50 rounded-lg text-sm text-blue-700">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Versions are stored in your browser and embedded in downloaded HTML files. 
+                                Share the HTML file to share all your versions with others.
+                            </div>
+                            
+                            ${versionsHtml}
+                        </div>
+                        
+                        <div class="p-6 border-t bg-gray-50 rounded-b-xl">
+                            <div class="flex flex-wrap gap-3 justify-between">
+                                <button onclick="app.saveVersion()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                    <i class="fas fa-plus mr-2"></i>Save New Version
+                                </button>
+                                <button onclick="app.downloadVersionedHTML()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                    <i class="fas fa-download mr-2"></i>Download HTML with All Versions
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                modal.onclick = (e) => {
+                    if (e.target === modal) this.closeVersionManager();
+                };
+            }
+            
+            /**
+             * Close version manager modal
+             */
+            closeVersionManager() {
+                const modal = document.getElementById('version-manager-modal');
+                if (modal) modal.remove();
+            }
+            
+            /**
+             * Load versions embedded in the HTML file itself
+             */
+            loadEmbeddedVersions() {
+                const embeddedData = document.getElementById('embedded-versions-data');
+                if (embeddedData) {
+                    try {
+                        const data = JSON.parse(embeddedData.textContent);
+                        if (data.versions && Array.isArray(data.versions)) {
+                            // Merge embedded versions with existing ones (avoid duplicates by ID)
+                            const existingIds = new Set(this.state.savedVersions.map(v => v.id));
+                            const newVersions = data.versions.filter(v => !existingIds.has(v.id));
+                            this.state.savedVersions = [...this.state.savedVersions, ...newVersions];
+                        }
+                    } catch (e) {
+                        console.log('No embedded versions found or invalid format');
+                    }
+                }
+            }
+            
+            /**
+             * Download the entire HTML file with all versions embedded
+             */
+            downloadVersionedHTML() {
+                // First, save current state as a version if there are changes
+                const shouldSaveCurrent = confirm('Would you like to save your current work as a new version before downloading?');
+                if (shouldSaveCurrent) {
+                    this.saveVersion();
+                }
+                
+                // Get the current HTML document
+                const html = document.documentElement.outerHTML;
+                
+                // Create the versions data to embed
+                const versionsData = JSON.stringify({
+                    versions: this.state.savedVersions,
+                    lastExport: new Date().toISOString()
+                });
+                
+                // Check if embedded data script already exists
+                let modifiedHtml = html;
+                const existingDataPattern = /<script id="embedded-versions-data" type="application\/json">[\s\S]*?<\/script>/;
+                const newDataScript = `<script id="embedded-versions-data" type="application/json">${versionsData}</script>`;
+                
+                if (existingDataPattern.test(modifiedHtml)) {
+                    // Replace existing
+                    modifiedHtml = modifiedHtml.replace(existingDataPattern, newDataScript);
+                } else {
+                    // Add before closing </head>
+                    modifiedHtml = modifiedHtml.replace('</head>', `${newDataScript}\n</head>`);
+                }
+                
+                // Create and download the file
+                const blob = new Blob([`<!DOCTYPE html>\n${modifiedHtml}`], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Amway-Business-Planner-${new Date().toISOString().split('T')[0]}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                alert(`HTML file downloaded with ${this.state.savedVersions.length} version(s) embedded.\n\nWhen you or anyone else opens this file, all saved versions will be available in the Version Manager.`);
             }
             
             // ============================================

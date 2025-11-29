@@ -838,6 +838,9 @@
                                     <button class="zoom-btn" onclick="app.resetPan()" title="Reset View">
                                         <i class="fas fa-home"></i>
                                     </button>
+                                    <button class="zoom-btn" onclick="app.resetOrganization()" title="Reset Organization" style="background: #ef4444;">
+                                        <i class="fas fa-trash-restore"></i>
+                                    </button>
                                 </div>
                                 <div id="org-viewport" class="org-chart-viewport">
                                     <div id="org-chart" class="org-tree" style="transform: scale(${this.state.zoomLevel}) translate(${this.state.panX || 0}px, ${this.state.panY || 0}px); transform-origin: top center;"></div>
@@ -1065,6 +1068,7 @@
             positionConnectionBars() {
                 // Use setTimeout to ensure DOM is fully rendered
                 setTimeout(() => {
+                    const zoomLevel = this.state.zoomLevel || 1;
                     const childrenContainers = document.querySelectorAll('.org-children:not(.single-child)');
                     childrenContainers.forEach(container => {
                         // Find or create the bar
@@ -1089,12 +1093,14 @@
                                 const firstRect = firstNode.getBoundingClientRect();
                                 const lastRect = lastNode.getBoundingClientRect();
                                 
-                                // Calculate centers relative to container
-                                const firstCenter = firstRect.left + firstRect.width / 2 - containerRect.left;
-                                const lastCenter = lastRect.left + lastRect.width / 2 - containerRect.left;
+                                // Adjust for zoom scale - getBoundingClientRect returns scaled values
+                                // so we need to divide by zoom to get unscaled positions
+                                const firstCenter = (firstRect.left + firstRect.width / 2 - containerRect.left) / zoomLevel;
+                                const lastCenter = (lastRect.left + lastRect.width / 2 - containerRect.left) / zoomLevel;
                                 
                                 bar.style.left = firstCenter + 'px';
                                 bar.style.width = Math.max(0, lastCenter - firstCenter) + 'px';
+                                bar.style.display = 'block'; // Ensure bar is visible
                             }
                         }
                     });
@@ -1717,6 +1723,8 @@
             
             renderIncentives() {
                 const incentives = this.calculateAllIncentives();
+                const annualProj = this.calculateAnnualProjections();
+                const faaProj = this.calculateFAAProjections();
                 
                 return `
                     <div>
@@ -1755,6 +1763,155 @@
                             <h4 class="text-xl font-semibold mb-3">Total Monthly Incentives</h4>
                             <div class="text-5xl font-bold">$${incentives.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                             <p class="text-sm opacity-90 mt-2">${incentives.breakdown.filter(i => i.qualified).length} of ${incentives.breakdown.length} incentives qualified</p>
+                        </div>
+                        
+                        <!-- Annual Global Award Recognition (GAR) Projection -->
+                        <div class="mt-8 border-t pt-6">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-4">
+                                <i class="fas fa-crown text-yellow-500 mr-2"></i>Annual Business Projection (GAR)
+                            </h3>
+                            <div class="bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-lg p-6 shadow-xl">
+                                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                    <div>
+                                        <div class="text-sm text-purple-200 uppercase tracking-wide font-semibold">Projected Pin Level</div>
+                                        <div class="text-4xl font-bold my-2">${annualProj.level}</div>
+                                        <div class="text-sm opacity-80">
+                                            Based on ${this.countQualifiedLegs('root')} Qualified Legs & Depth Structure
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm text-purple-200">Qualification Credits (QC)</div>
+                                        <div class="text-3xl font-bold">${annualProj.totalQC.toFixed(1)}</div>
+                                        <div class="text-xs text-purple-300">
+                                            Cap Applied: ${annualProj.details.capApplied || 'N/A'} per leg
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                ${annualProj.annualBonus > 0 ? `
+                                <div class="mt-6 pt-6 border-t border-purple-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                    <div>
+                                        <span class="text-yellow-400 font-bold text-xl">
+                                            <i class="fas fa-trophy mr-2"></i>Annual Cash Award
+                                        </span>
+                                        <span class="text-xs block text-purple-300">(Two-Time Cash Incentive Estimate)</span>
+                                    </div>
+                                    <div class="text-3xl font-bold text-yellow-400">
+                                        $${annualProj.annualBonus.toLocaleString()}
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                <div class="mt-4 bg-black bg-opacity-20 rounded p-3 text-xs">
+                                    <div class="font-bold mb-2 text-purple-200">Leg Depth Analysis:</div>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${annualProj.legData && annualProj.legData.length > 0 ? annualProj.legData.map((pts, idx) => `
+                                            <div class="px-2 py-1 rounded ${pts >= (annualProj.details.capApplied || 12) ? 'bg-red-500 text-white' : 'bg-purple-800'}">
+                                                Leg ${idx+1}: ${pts.toFixed(1)} QC ${pts >= (annualProj.details.capApplied || 12) ? '(Capped)' : ''}
+                                            </div>
+                                        `).join('') : '<span class="text-purple-300">No qualified legs yet</span>'}
+                                    </div>
+                                </div>
+                                
+                                <!-- Total Annual Projection -->
+                                <div class="mt-6 pt-6 border-t border-purple-700">
+                                    <div class="grid grid-cols-3 gap-4 text-center">
+                                        <div>
+                                            <div class="text-sm text-purple-200">Monthly × 12</div>
+                                            <div class="text-xl font-bold">$${annualProj.monthlyProjected.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-sm text-purple-200">Annual Bonus</div>
+                                            <div class="text-xl font-bold">$${annualProj.annualBonus.toLocaleString()}</div>
+                                        </div>
+                                        <div class="bg-yellow-500 bg-opacity-30 rounded p-2">
+                                            <div class="text-sm text-yellow-200">Total Annual</div>
+                                            <div class="text-2xl font-bold text-yellow-300">$${annualProj.totalAnnual.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- FAA Super Leg Analysis -->
+                            ${faaProj.totalPoints > 0 ? `
+                            <div class="mt-6 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg p-6 shadow-xl">
+                                <h4 class="text-lg font-bold mb-4">
+                                    <i class="fas fa-gem mr-2"></i>FAA Super Leg Analysis
+                                </h4>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                    <div>
+                                        <div class="text-sm text-amber-200">Total Points</div>
+                                        <div class="text-2xl font-bold">${faaProj.totalPoints.toFixed(1)}</div>
+                                        <div class="text-xs text-amber-300">Cap: 30/leg</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm text-amber-200">Super Legs</div>
+                                        <div class="text-2xl font-bold">${faaProj.superLegs}</div>
+                                        <div class="text-xs text-amber-300">30+ pts each</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm text-amber-200">Multiplier</div>
+                                        <div class="text-2xl font-bold">${(faaProj.multiplier * 100).toFixed(0)}%</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm text-amber-200">Super Leg Bonus</div>
+                                        <div class="text-2xl font-bold">$${faaProj.superLegBonus.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 text-xs text-amber-200">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Super Leg = 30+ points (≈10 Diamonds). Cap ensures width over depth.
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            <!-- Expert Formula Explanation -->
+                            <div class="mt-6 bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+                                <h4 class="text-lg font-bold text-blue-800 mb-3">
+                                    <i class="fas fa-calculator mr-2"></i>Expert Income Formula Summary
+                                </h4>
+                                <div class="text-sm text-blue-700 space-y-2">
+                                    <p><strong>Monthly Income = </strong>Performance + Differential + Leadership(6%) + Depth(1%) + Ruby(2%) + Retail + CSI</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                        <div class="bg-white rounded p-3">
+                                            <div class="font-bold text-blue-800">Leadership Bonus (6%)</div>
+                                            <div class="text-xs mt-1">
+                                                • <strong>Pass-Up Thresholds:</strong><br/>
+                                                • Side PV ≥ 7,500: Keep full 6%<br/>
+                                                • 2,500 ≤ Side PV < 7,500: Partial<br/>
+                                                • Side PV < 2,500: Pass up 100%
+                                            </div>
+                                        </div>
+                                        <div class="bg-white rounded p-3">
+                                            <div class="font-bold text-blue-800">Depth Bonus (1%)</div>
+                                            <div class="text-xs mt-1">
+                                                • <strong>Blocking Rule:</strong><br/>
+                                                • Requires 3+ qualified legs<br/>
+                                                • Blocked by downline leaders with 3+ legs<br/>
+                                                • After block: +2 more levels, then STOP
+                                            </div>
+                                        </div>
+                                        <div class="bg-white rounded p-3">
+                                            <div class="font-bold text-blue-800">GAR Points (Annual)</div>
+                                            <div class="text-xs mt-1">
+                                                • Platinum: 1.0 QC<br/>
+                                                • Emerald: 1.5 QC<br/>
+                                                • Diamond: 3.0 QC<br/>
+                                                • Cap: 6-12 QC per leg (by rank)
+                                            </div>
+                                        </div>
+                                        <div class="bg-white rounded p-3">
+                                            <div class="font-bold text-blue-800">FAA Points (Annual)</div>
+                                            <div class="text-xs mt-1">
+                                                • Same point values as GAR<br/>
+                                                • Cap: 30 points per leg<br/>
+                                                • Super Leg: 30+ points = $25k bonus<br/>
+                                                • 10 Diamonds = 30 points (capped)
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1833,8 +1990,13 @@
                     customerSalesIncentive = Math.min(75, vcsBV * csiRate);
                 }
                 
+                // 7. DEPTH BONUS (Core Plan - Emerald+)
+                // 1% on qualified downlines starting from Level 2
+                // Requires 3+ qualified legs, with blocking logic
+                const depthBonus = this.calculateDepthBonusAmount(root);
+                
                 // Calculate totals
-                const coreTotal = performanceBonus + differentialBonus + leadershipBonus + rubyBonus + retailMargin;
+                const coreTotal = performanceBonus + differentialBonus + leadershipBonus + rubyBonus + retailMargin + depthBonus;
                 const corePlusTotal = customerSalesIncentive;
                 const total = coreTotal + corePlusTotal;
                 
@@ -1843,6 +2005,7 @@
                     performanceBonus,
                     differentialBonus,
                     leadershipBonus,
+                    depthBonus,
                     rubyBonus,
                     retailMargin,
                     
@@ -1859,6 +2022,8 @@
                     totalBV: metrics.groupBV,
                     rubyPV: metrics.rubyPV,
                     rubyBV: metrics.rubyBV,
+                    sidePV: this.calculateSidePV('root'),
+                    sideBV: this.calculateSideBV('root'),
                     personalPV: yourPersonalPV,
                     personalBV: yourPersonalBV,
                     qualifiedLegs: metrics.qualifiedLegs,
@@ -1956,47 +2121,161 @@
                 return compliantBV;
             }
             
+            // ==========================================
+            // EXPERT FORMULA: SIDE VOLUME CALCULATIONS
+            // ==========================================
+            
             /**
-             * Calculate Leadership Bonus
-             * 6% of BV from qualified 25% legs, computed bottom-up
-             * Minimum 2,500 Ruby PV required to keep the bonus
+             * Calculates Side Volume (Ruby PV)
+             * Total PV minus any downline leg that has reached 25% (7,500 PV)
+             * This is the critical metric for Leadership Bonus eligibility
+             */
+            calculateSidePV(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return 0;
+
+                let sidePV = node.pv; // Start with personal PV
+
+                if (node.children) {
+                    node.children.forEach(childId => {
+                        const legTotalPV = this.calculateGroupPV(childId);
+                        // If leg is NOT qualified ( < 7500), it counts as Side Volume
+                        if (legTotalPV < 7500) {
+                            sidePV += legTotalPV;
+                        }
+                        // Qualified legs (7500+) do NOT count toward Side Volume
+                    });
+                }
+                return sidePV;
+            }
+
+            /**
+             * Calculates Side BV (Ruby BV) - Payment currency for Side Volume
+             */
+            calculateSideBV(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return 0;
+
+                // Start with personal BV (adjusted for VCS compliance if needed)
+                const vcsStatus = this.checkVCSCompliance(node);
+                let sideBV = vcsStatus.effectiveBV;
+
+                if (node.children) {
+                    node.children.forEach(childId => {
+                        const legTotalPV = this.calculateGroupPV(childId);
+                        // Only add BV from non-qualified legs
+                        if (legTotalPV < 7500) {
+                            sideBV += this.calculateGroupBV(childId);
+                        }
+                    });
+                }
+                return sideBV;
+            }
+            
+            /**
+             * Count qualified legs (legs at 25%/7500+ PV)
+             */
+            countQualifiedLegs(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node || !node.children) return 0;
+                
+                let count = 0;
+                node.children.forEach(childId => {
+                    const legPV = this.calculateGroupPV(childId);
+                    if (legPV >= 7500) count++;
+                });
+                return count;
+            }
+            
+            /**
+             * EXPERT FORMULA: Leadership Bonus with Pass-Up Logic (6-4-2 Rule)
+             * 
+             * Leadership Bonus = 6% of BV from qualified 25% legs
+             * 
+             * Pass-Up Thresholds (based on Side Volume):
+             * - Side PV >= 7,500: Keep full 6% (no adjustment)
+             * - 2,500 <= Side PV < 7,500: Partial - pass up shortfall to ensure upline gets minimum
+             * - Side PV < 2,500: Pass up 100% of Leadership Bonus
+             * 
+             * The "guaranteed minimum" ensures uplines receive at least:
+             * 7,500 PV × ratio × 6% = $1,543 (approx) per qualified leg
              */
             calculateLeadershipBonusAmount(root, metrics) {
                 let leadershipBonus = 0;
                 
                 if (!root.children || root.children.length === 0) return 0;
                 
-                root.children.forEach(childId => {
-                    const legPV = this.calculateGroupPV(childId);
-                    const legBV = this.calculateGroupBV(childId);
-                    const legPerformanceLevel = this.getPerformanceLevel(legPV);
-                    
-                    // Only 25% qualified legs generate Leadership Bonus
-                    if (legPerformanceLevel >= 25 || legPV >= 7500) {
-                        // 6% of the leg's BV
-                        const legBonus = legBV * 0.06;
-                        
-                        // Check if there's a qualified Platinum in this leg who would take some
-                        const qualifiedPlatinumInLeg = this.findQualifiedPlatinumInLeg(childId);
-                        
-                        if (qualifiedPlatinumInLeg) {
-                            // Some bonus may pass up - simplified calculation
-                            // In reality, this is computed bottom-up
-                            leadershipBonus += legBonus * 0.5; // Simplified - you get portion
-                        } else {
-                            // No qualified Platinum below - you keep the full 6%
-                            leadershipBonus += legBonus;
-                        }
-                    }
-                });
+                const sidePV = metrics.rubyPV; // Ruby PV = Side Volume
+                const leadershipRate = 0.06; // 6%
                 
-                // Minimum Ruby PV requirement to keep Leadership Bonus
-                if (metrics.rubyPV < 2500) {
-                    // Pass-up: Bonus goes to upline (not applicable for root)
+                // Case C: If Side PV < 2,500, you are NOT eligible for Leadership Bonus
+                // The entire bonus passes up to your qualified upline
+                if (sidePV < 2500) {
                     return 0;
                 }
                 
+                // Calculate the total "Pass-Up Adjustment" you owe to your upline
+                // If Side PV >= 7,500, adjustment is 0
+                // If 2,500 <= Side PV < 7,500, adjustment is (7,500 - SidePV) * ratio * 6%
+                let totalPassUpAdjustment = 0;
+                if (sidePV < 7500) {
+                    const shortfall = 7500 - sidePV;
+                    totalPassUpAdjustment = shortfall * this.config.pvToBvRatio * leadershipRate;
+                }
+                
+                // Calculate 6% on each qualified leg
+                root.children.forEach(childId => {
+                    const legPV = this.calculateGroupPV(childId);
+                    const legBV = this.calculateGroupBV(childId);
+                    
+                    // Only 25% qualified legs (7,500+ PV) generate Leadership Bonus
+                    if (legPV >= 7500) {
+                        // Base bonus: 6% of the leg's BV
+                        const legBonus = legBV * leadershipRate;
+                        
+                        // Check for downline leaders who also qualify for Leadership
+                        // This handles the "blocking" within the Leadership Bonus itself
+                        const downlineLeadershipDeduction = this.calculateDownlineLeadershipDeduction(childId);
+                        
+                        leadershipBonus += Math.max(0, legBonus - downlineLeadershipDeduction);
+                    }
+                });
+                
+                // Apply the pass-up deduction (for Side Volume shortfall)
+                leadershipBonus = Math.max(0, leadershipBonus - totalPassUpAdjustment);
+                
                 return leadershipBonus;
+            }
+            
+            /**
+             * Calculate deduction for downline leaders who also earn Leadership Bonus
+             * This implements the bottom-up calculation where downline Platinums
+             * take their portion first
+             */
+            calculateDownlineLeadershipDeduction(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node || !node.children) return 0;
+                
+                let deduction = 0;
+                
+                node.children.forEach(childId => {
+                    const childGroupPV = this.calculateGroupPV(childId);
+                    const childGroupBV = this.calculateGroupBV(childId);
+                    
+                    // If this downline is also at 25%, they earn Leadership on their legs
+                    if (childGroupPV >= 7500) {
+                        // Check if this person has qualifying Side Volume to keep their bonus
+                        const childSidePV = this.calculateSidePV(childId);
+                        
+                        if (childSidePV >= 2500) {
+                            // They keep some/all of the 6%, so we don't get it
+                            deduction += childGroupBV * 0.06;
+                        }
+                        // If childSidePV < 2500, they pass it all up, so we keep it
+                    }
+                });
+                
+                return deduction;
             }
             
             /**
@@ -2023,6 +2302,108 @@
                 return null;
             }
             
+            // ==========================================
+            // EXPERT FORMULA: DEPTH BONUS (1%) WITH BLOCKING
+            // ==========================================
+            
+            /**
+             * Calculate Depth Bonus
+             * 
+             * Eligibility: You must have 3+ qualified frontline legs (Silver Producer or above)
+             * Rate: 1% on qualified downlines starting from Level 2
+             * 
+             * BLOCKING RULE:
+             * - Earn 1% on qualified volume down the line
+             * - STOP when hitting a downline who also qualifies for Depth Bonus (3+ qualified legs)
+             * - When blocked: You get 1% on the blocker + their frontline + their 2nd level, then STOP
+             */
+            calculateDepthBonusAmount(root) {
+                // Requires 3+ qualified legs to activate Depth Bonus
+                const qualifiedLegsCount = this.countQualifiedLegs('root');
+                if (qualifiedLegsCount < 3) return 0;
+                
+                let depthBonus = 0;
+                
+                if (root.children) {
+                    root.children.forEach(childId => {
+                        const legPV = this.calculateGroupPV(childId);
+                        
+                        // Only process qualified legs (7500+ PV)
+                        if (legPV >= 7500) {
+                            // Start recursive calculation from Level 2 (child's children)
+                            const childNode = this.state.organization.get(childId);
+                            if (childNode && childNode.children) {
+                                childNode.children.forEach(grandChildId => {
+                                    depthBonus += this.calculateRecursiveDepthBonus(grandChildId, -1);
+                                });
+                            }
+                        }
+                    });
+                }
+                
+                return depthBonus;
+            }
+            
+            /**
+             * Recursive Depth Bonus Calculation with Blocking Logic
+             * 
+             * Logic: Earn 1% until you hit a downline who ALSO qualifies for Depth Bonus (3+ legs).
+             * If they qualify, you get 1% on them, their children, and their grandchildren, then STOP.
+             * 
+             * @param nodeId - Current node to process
+             * @param depthCountAfterBlock - Tracks levels after hitting a "blocker"
+             *   -1 = not blocked yet
+             *   0 = just hit the blocker (earn on this level)
+             *   1 = first level after blocker (earn on frontline)
+             *   2 = second level after blocker (earn on 2nd level, then STOP)
+             */
+            calculateRecursiveDepthBonus(nodeId, depthCountAfterBlock = -1) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return 0;
+
+                const groupPV = this.calculateGroupPV(nodeId);
+                
+                // Only paid on qualified groups (7500+ PV)
+                if (groupPV < 7500) return 0;
+
+                const groupBV = this.calculateGroupBV(nodeId);
+                let bonus = groupBV * 0.01; // 1%
+
+                // CHECK FOR BLOCKING: Does this person have 3+ qualified legs?
+                let qualifiedLegs = 0;
+                if (node.children) {
+                    node.children.forEach(c => {
+                        if (this.calculateGroupPV(c) >= 7500) qualifiedLegs++;
+                    });
+                }
+
+                let nextDepthCount = depthCountAfterBlock;
+
+                // If we are already blocked, increment counter
+                if (depthCountAfterBlock >= 0) {
+                    nextDepthCount++;
+                }
+                // If we hit a new blocker, start the countdown (we get this level + 2 more)
+                else if (qualifiedLegs >= 3) {
+                    nextDepthCount = 0; 
+                }
+
+                // Stop condition: If we've gone 2 levels past the blocker, STOP
+                if (depthCountAfterBlock >= 2) {
+                    return 0; 
+                }
+
+                // Continue recursively through children
+                let childBonus = 0;
+                if (node.children) {
+                    node.children.forEach(childId => {
+                        childBonus += this.calculateRecursiveDepthBonus(childId, nextDepthCount);
+                    });
+                }
+
+                return bonus + childBonus;
+            }
+            
             /**
              * Empty income result for when there's no organization
              */
@@ -2031,6 +2412,7 @@
                     performanceBonus: 0,
                     differentialBonus: 0,
                     leadershipBonus: 0,
+                    depthBonus: 0,
                     rubyBonus: 0,
                     retailMargin: 0,
                     customerSalesIncentive: 0,
@@ -2041,6 +2423,8 @@
                     totalBV: 0,
                     rubyPV: 0,
                     rubyBV: 0,
+                    sidePV: 0,
+                    sideBV: 0,
                     personalPV: 0,
                     personalBV: 0,
                     qualifiedLegs: 0,
@@ -2094,16 +2478,23 @@
                 
                 // 7. Leadership Bonus (already in Core Plan, show for reference)
                 incentives.push({
-                    name: 'Leadership Bonus',
+                    name: 'Leadership Bonus (6%)',
                     amount: income.leadershipBonus,
                     qualified: income.leadershipBonus > 0,
-                    description: income.leadershipBonus > 0 ? '6% on qualified 25% legs' : 'Requires 25% level + Ruby Volume',
+                    description: income.leadershipBonus > 0 
+                        ? '6% on qualified 25% legs (with Pass-Up logic)' 
+                        : 'Requires 25% level + 2,500+ Side PV',
                     details: {
                         'Your Level': income.performanceLevel.toFixed(0) + '%',
                         'Qualified Legs': metrics ? metrics.qualifiedLegs : 0,
-                        'Ruby PV': metrics ? metrics.rubyPV.toFixed(0) : '0'
+                        'Side PV': income.sidePV ? income.sidePV.toFixed(0) : (metrics ? metrics.rubyPV.toFixed(0) : '0'),
+                        'Pass-Up Status': income.sidePV >= 7500 ? 'Full (7,500+)' : (income.sidePV >= 2500 ? 'Partial' : 'None (<2,500)')
                     }
                 });
+                
+                // 8. Depth Bonus (Core Plan - Emerald+)
+                const depthBonus = this.calculateDepthBonus(income, root);
+                incentives.push(depthBonus);
                 
                 const total = incentives.reduce((sum, inc) => sum + (inc.amount || 0), 0);
                 
@@ -2401,15 +2792,276 @@
             }
             
             calculateDepthBonus(income, root) {
-                // Depth bonus for higher levels - simplified
+                // Expert formula: 1% Depth Bonus with blocking
+                // Requires 3+ qualified legs (Emerald+)
+                const qualifiedLegs = this.countQualifiedLegs('root');
+                const depthBonus = qualifiedLegs >= 3 ? this.calculateDepthBonusAmount(root) : 0;
+                
                 return {
-                    name: 'Depth Bonus',
-                    amount: 0,
-                    qualified: false,
-                    description: 'Available for Emerald and above'
+                    name: 'Depth Bonus (1%)',
+                    amount: depthBonus,
+                    qualified: depthBonus > 0,
+                    description: depthBonus > 0 
+                        ? '1% on qualified downline volume (with blocking)' 
+                        : 'Requires 3+ qualified legs (Emerald+)',
+                    details: {
+                        'Qualified Legs': qualifiedLegs,
+                        'Requirement': '3+ legs at 25%',
+                        'Note': 'Blocked by downline leaders with 3+ legs'
+                    }
                 };
             }
             
+            // ==========================================
+            // ANNUAL PROJECTION ENGINE (GAR & FAA)
+            // Expert Formula for Deep Organizations
+            // ==========================================
+
+            /**
+             * Calculate Annual Business Projections
+             * Includes GAR (Global Award Recognition) and FAA (Founders Achievement Award)
+             * 
+             * GAR Cap per leg: 6-12 QC depending on rank
+             * FAA Cap per leg: 30 points (10 Diamonds)
+             */
+            calculateAnnualProjections() {
+                const root = this.state.organization.get('root');
+                if (!root) return { gar: null, income: 0 };
+
+                // 1. Identify "Width" (Number of qualified frontline legs)
+                let qualifiedFrontlineLegs = 0;
+                const legData = [];
+
+                if (root.children) {
+                    root.children.forEach(childId => {
+                        const legPV = this.calculateGroupPV(childId);
+                        // Check if this leg is qualified (7500+ PV)
+                        if (legPV >= 7500) {
+                            qualifiedFrontlineLegs++;
+                            
+                            // 2. Calculate Depth Credits for this specific leg
+                            const legCredits = this.calculateLegDepthCredits(childId);
+                            legData.push(legCredits);
+                        }
+                    });
+                }
+
+                // 3. Determine GAR Award Level with dynamic caps
+                const garResult = this.determineGARAwardLevel(qualifiedFrontlineLegs, legData);
+
+                // 4. Calculate Estimated Annual Cash Award (Two-Time Cash)
+                const annualCashAward = this.getGARCashAward(garResult.level);
+
+                // 5. Calculate monthly income projection
+                const monthlyIncome = this.calculateIncome();
+                const monthlyProjected = monthlyIncome.total * 12;
+
+                return {
+                    level: garResult.level,
+                    totalQC: garResult.totalQC,
+                    cappedLegs: garResult.cappedLegCount,
+                    annualBonus: annualCashAward,
+                    monthlyProjected: monthlyProjected,
+                    totalAnnual: monthlyProjected + annualCashAward,
+                    details: garResult,
+                    legData: legData
+                };
+            }
+
+            /**
+             * Recursively scans a leg to find all depth credits (Founders Platinum+)
+             * Logic: FP=1.0, Emerald=1.5, Diamond=3.0
+             */
+            calculateLegDepthCredits(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) return 0;
+
+                let myCredits = 0;
+                
+                // Detect Leader Status of THIS node based on their downline structure
+                const groupPV = this.calculateGroupPV(nodeId);
+                
+                // Count *their* qualified legs to determine *their* pin
+                let childQualifiedLegs = 0;
+                if (node.children) {
+                    node.children.forEach(c => {
+                        if (this.calculateGroupPV(c) >= 7500) childQualifiedLegs++;
+                    });
+                }
+
+                // Assign Credits based on structure
+                // Diamond (6+ qualified legs): 3.0 QC
+                // Emerald (3-5 qualified legs): 1.5 QC
+                // Founders Platinum (7500+ PV): 1.0 QC
+                if (childQualifiedLegs >= 6) {
+                    myCredits = 3.0; // Diamond Bonus Recipient (DBR)
+                } else if (childQualifiedLegs >= 3) {
+                    myCredits = 1.5; // Emerald Bonus Recipient (EBR)
+                } else if (groupPV >= 7500) {
+                    myCredits = 1.0; // Founders Platinum (FP)
+                } else {
+                    myCredits = 0;   // Not yet a leader that generates credits
+                }
+
+                // Recursively add credits from downline leaders
+                let downlineCredits = 0;
+                if (node.children) {
+                    node.children.forEach(childId => {
+                        downlineCredits += this.calculateLegDepthCredits(childId);
+                    });
+                }
+
+                return myCredits + downlineCredits;
+            }
+
+            /**
+             * Determines the GAR Award Level by applying dynamic caps
+             * The cap changes based on the level you are aiming for.
+             * 
+             * GAR Tiers (from highest to lowest):
+             * - Founders Crown Ambassador: 14+ legs, 100+ QC, cap=12
+             * - Crown Ambassador: 14+ legs, 88+ QC, cap=12
+             * - ... down to Executive Diamond: 6 legs, 10+ QC, cap=6
+             */
+            determineGARAwardLevel(fpLegs, legDataRaw) {
+                // Define Tiers from the GAR Table (check from highest to lowest)
+                const tiers = [
+                    { name: 'Founders Crown Ambassador', minLegs: 14, minQC: 100, cap: 12 },
+                    { name: 'Crown Ambassador',          minLegs: 14, minQC: 88,  cap: 12 },
+                    { name: 'Founders Crown',            minLegs: 12, minQC: 76,  cap: 12 },
+                    { name: 'Crown',                     minLegs: 12, minQC: 64,  cap: 12 },
+                    { name: 'Founders Triple Diamond',   minLegs: 10, minQC: 52,  cap: 12 },
+                    { name: 'Triple Diamond',            minLegs: 10, minQC: 43,  cap: 12 },
+                    { name: 'Founders Double Diamond',   minLegs: 8,  minQC: 34,  cap: 9 },
+                    { name: 'Double Diamond',            minLegs: 8,  minQC: 25,  cap: 9 },
+                    { name: 'Founders Executive Diamond',minLegs: 6,  minQC: 16,  cap: 6 },
+                    { name: 'Executive Diamond',         minLegs: 6,  minQC: 10,  cap: 6 }
+                ];
+
+                for (const tier of tiers) {
+                    // 1. Check Width Requirement
+                    if (fpLegs < tier.minLegs) continue;
+
+                    // 2. Calculate Total QC with the Tier's specific Cap
+                    let currentTotalQC = 0;
+                    let cappedCount = 0;
+
+                    for (const rawLegPoints of legDataRaw) {
+                        // Apply Cap per leg
+                        // Example: If leg has 100 Diamonds (300 pts), Cap at 12 for Crown Amb.
+                        const pointsToAdd = Math.min(rawLegPoints, tier.cap);
+                        
+                        if (rawLegPoints > tier.cap) cappedCount++;
+                        currentTotalQC += pointsToAdd;
+                    }
+
+                    // 3. Check Depth Requirement
+                    if (currentTotalQC >= tier.minQC) {
+                        return {
+                            level: tier.name,
+                            totalQC: currentTotalQC,
+                            capApplied: tier.cap,
+                            cappedLegCount: cappedCount,
+                            rawLegData: legDataRaw
+                        };
+                    }
+                }
+
+                // If no executive level met, return base level
+                return {
+                    level: fpLegs >= 6 ? 'Diamond' : (fpLegs >= 3 ? 'Emerald' : (fpLegs >= 2 ? 'Sapphire' : (fpLegs >= 1 ? 'Platinum' : 'Below Platinum'))),
+                    totalQC: legDataRaw.reduce((a, b) => a + b, 0),
+                    capApplied: 0,
+                    cappedLegCount: 0,
+                    rawLegData: legDataRaw
+                };
+            }
+
+            /**
+             * Returns the "Year 1" Cash Award for the level
+             * These are estimated Two-Time Cash Incentive values
+             */
+            getGARCashAward(levelName) {
+                const awards = {
+                    'Executive Diamond': 45000,
+                    'Founders Executive Diamond': 51500,
+                    'Double Diamond': 64300,
+                    'Founders Double Diamond': 90000,
+                    'Triple Diamond': 115800,
+                    'Founders Triple Diamond': 154400,
+                    'Crown': 205800,
+                    'Founders Crown': 257300,
+                    'Crown Ambassador': 308700,
+                    'Founders Crown Ambassador': 360200,
+                    'Diamond': 15000,
+                    'Emerald': 8000,
+                    'Sapphire': 4000,
+                    'Platinum': 2500
+                };
+                return awards[levelName] || 0;
+            }
+            
+            // ==========================================
+            // FAA (FOUNDERS ACHIEVEMENT AWARD) SYSTEM
+            // Alternative annual award with 30-point cap per leg
+            // ==========================================
+            
+            /**
+             * Calculate FAA Points with Super Leg logic
+             * Cap per leg: 30 points (10 Diamonds)
+             * Super Leg: A leg that has reached the 30-point cap
+             */
+            calculateFAAProjections() {
+                const root = this.state.organization.get('root');
+                if (!root) return { level: 'N/A', totalPoints: 0, superLegs: 0 };
+                
+                let totalPoints = 0;
+                let superLegCount = 0;
+                const legDetails = [];
+                
+                if (root.children) {
+                    root.children.forEach(childId => {
+                        const legPV = this.calculateGroupPV(childId);
+                        if (legPV >= 7500) {
+                            const rawPoints = this.calculateLegDepthCredits(childId);
+                            // FAA Cap: 30 points per leg
+                            const cappedPoints = Math.min(rawPoints, 30);
+                            
+                            if (rawPoints >= 30) {
+                                superLegCount++;
+                            }
+                            
+                            totalPoints += cappedPoints;
+                            legDetails.push({
+                                raw: rawPoints,
+                                capped: cappedPoints,
+                                isSuperLeg: rawPoints >= 30
+                            });
+                        }
+                    });
+                }
+                
+                // Calculate FAA multiplier (example: 200% - 750% based on points)
+                let multiplier = 0;
+                if (totalPoints >= 100) multiplier = 7.50;
+                else if (totalPoints >= 75) multiplier = 5.00;
+                else if (totalPoints >= 50) multiplier = 3.50;
+                else if (totalPoints >= 30) multiplier = 2.50;
+                else if (totalPoints >= 20) multiplier = 2.00;
+                else if (totalPoints >= 10) multiplier = 1.50;
+                
+                // Super Leg Bonus: $20,000 - $40,000 per super leg
+                const superLegBonus = superLegCount * 25000;
+                
+                return {
+                    totalPoints: totalPoints,
+                    superLegs: superLegCount,
+                    multiplier: multiplier,
+                    superLegBonus: superLegBonus,
+                    legDetails: legDetails
+                };
+            }
+
             calculateGroupPV(nodeId) {
                 const node = this.state.organization.get(nodeId);
                 if (!node) return 0;
@@ -2490,7 +3142,7 @@
                     summaryDiv.innerHTML = `
                         <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
                             <span>Group PV: ${income.totalPV.toLocaleString()}</span> | 
-                            <span>Ruby PV: ${income.rubyPV.toLocaleString()}</span> | 
+                            <span>Side PV: ${(income.sidePV || income.rubyPV).toLocaleString()}</span> | 
                             <span>Qualified Legs: ${income.qualifiedLegs}</span>
                         </div>
                         <div class="flex justify-between">
@@ -2502,11 +3154,15 @@
                             <span class="font-semibold">$${income.differentialBonus.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>Leadership Bonus:</span>
+                            <span>Leadership Bonus (6%):</span>
                             <span class="font-semibold">$${income.leadershipBonus.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>Ruby Bonus:</span>
+                            <span>Depth Bonus (1%):</span>
+                            <span class="font-semibold">$${(income.depthBonus || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Ruby Bonus (2%):</span>
                             <span class="font-semibold">$${income.rubyBonus.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
@@ -2630,12 +3286,75 @@
             
             resetPan() {
                 const viewport = document.getElementById('org-viewport');
-                if (viewport) {
-                    viewport.scrollLeft = 0;
-                    viewport.scrollTop = 0;
-                }
+                const chart = document.getElementById('org-chart');
+                if (!viewport || !chart) return;
+                
+                // Reset zoom to 1
                 this.state.zoomLevel = 1;
+                this.applyZoom();
+                
+                // Wait for reflow then center the root node at top
+                requestAnimationFrame(() => {
+                    const rootNode = chart.querySelector('.org-node-wrapper[data-node-id="root"] .org-node');
+                    if (rootNode) {
+                        const viewportRect = viewport.getBoundingClientRect();
+                        const rootRect = rootNode.getBoundingClientRect();
+                        const chartRect = chart.getBoundingClientRect();
+                        
+                        // Calculate where root is relative to chart
+                        const rootCenterX = rootRect.left - chartRect.left + rootRect.width / 2;
+                        
+                        // Scroll to center root horizontally and show at top with some padding
+                        viewport.scrollLeft = rootCenterX - viewportRect.width / 2;
+                        viewport.scrollTop = 0;
+                    } else {
+                        // Fallback: just scroll to top-left
+                        viewport.scrollLeft = 0;
+                        viewport.scrollTop = 0;
+                    }
+                    
+                    // Reposition connection bars
+                    this.positionConnectionBars();
+                });
+            }
+            
+            resetOrganization() {
+                if (!confirm('Are you sure you want to reset the organization? This will clear all IBOs except "You" and cannot be undone.')) {
+                    return;
+                }
+                
+                // Create fresh organization with just root
+                this.state.organization = new Map();
+                this.state.organization.set('root', {
+                    id: 'root',
+                    name: 'You',
+                    pv: 0,
+                    bv: 0,
+                    customerSalesPV: 0,
+                    vcsPV: 0,
+                    notes: '',
+                    children: [],
+                    parentId: null
+                });
+                
+                // Reset related state
+                this.state.selectedNode = null;
+                this.state.collapsedNodes = new Set();
+                this.state.zoomLevel = 1;
+                
+                // Clear monthly data except current month structure
+                const currentMonth = this.state.currentMonth;
+                this.state.monthlyData = new Map();
+                this.state.monthlyData.set(currentMonth, {
+                    organization: JSON.parse(JSON.stringify(Array.from(this.state.organization.entries())))
+                });
+                
+                // Save and re-render
+                this.saveOrganization();
                 this.renderOrganizationChart();
+                this.updateIncomeSummary();
+                this.updateTeamStats();
+                this.resetPan();
             }
             
             attachVisualBuilderEvents() {

@@ -1198,7 +1198,7 @@
                     collapseBtn.style.left = '-10px';
                     collapseBtn.style.zIndex = '30';
                     collapseBtn.innerHTML = isCollapsed ? '<i class="fas fa-plus"></i>' : '<i class="fas fa-minus"></i>';
-                    collapseBtn.title = isCollapsed ? 'Expand downline' : 'Collapse downline';
+                    collapseBtn.title = isCollapsed ? 'Expand next layer' : 'Collapse downline';
                     collapseBtn.onclick = (e) => {
                         e.stopPropagation();
                         this.toggleNodeCollapse(node.id);
@@ -1329,19 +1329,73 @@
                 return { level: 'IBO', badgeClass: '' };
             }
             
-            // Toggle collapse/expand for a node
+            // Toggle collapse/expand for a node - only expands ONE layer at a time
             toggleNodeCollapse(nodeId) {
                 if (!this.state.collapsedNodes) {
                     this.state.collapsedNodes = new Set();
                 }
                 
+                const node = this.state.organization.get(nodeId);
+                if (!node) return;
+                
                 if (this.state.collapsedNodes.has(nodeId)) {
+                    // Expanding: only reveal direct children (keep grandchildren collapsed)
                     this.state.collapsedNodes.delete(nodeId);
+                    
+                    // Ensure all children with their own children are collapsed
+                    if (node.children && node.children.length > 0) {
+                        node.children.forEach(childId => {
+                            const child = this.state.organization.get(childId);
+                            if (child && child.children && child.children.length > 0) {
+                                this.state.collapsedNodes.add(childId);
+                            }
+                        });
+                    }
                 } else {
+                    // Collapsing: collapse this node
                     this.state.collapsedNodes.add(nodeId);
                 }
                 
                 this.renderOrganizationChart();
+            }
+            
+            // Collapse all nodes with children except root (for cleaner initial view)
+            collapseAllNodesExceptRoot() {
+                if (!this.state.collapsedNodes) {
+                    this.state.collapsedNodes = new Set();
+                }
+                
+                this.state.organization.forEach((node, nodeId) => {
+                    if (nodeId !== 'root' && node.children && node.children.length > 0) {
+                        this.state.collapsedNodes.add(nodeId);
+                    }
+                });
+            }
+            
+            // Collapse all nodes in a subtree (for converted pins)
+            collapseSubtree(nodeId, includeRoot = false) {
+                if (!this.state.collapsedNodes) {
+                    this.state.collapsedNodes = new Set();
+                }
+                
+                const node = this.state.organization.get(nodeId);
+                if (!node) return;
+                
+                // Collapse the node itself if it has children and includeRoot is true
+                if (includeRoot && node.children && node.children.length > 0) {
+                    this.state.collapsedNodes.add(nodeId);
+                }
+                
+                // Recursively collapse all descendants
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(childId => {
+                        const child = this.state.organization.get(childId);
+                        if (child && child.children && child.children.length > 0) {
+                            this.state.collapsedNodes.add(childId);
+                            this.collapseSubtree(childId, false);
+                        }
+                    });
+                }
             }
             
             // Keep organizeByLevels for other uses (like stats)
@@ -3750,6 +3804,9 @@
                 // Build the organization from the structure
                 this.buildOrganizationFromStructure(structure);
                 
+                // Collapse all nodes except root for cleaner initial view
+                this.collapseAllNodesExceptRoot();
+                
                 // Reset selector
                 document.getElementById('example-selector').value = '';
                 
@@ -4553,6 +4610,9 @@
                     if (existingChildren.length > 0) {
                         this.reattachChildren(existingChildren, 'root');
                     }
+                    
+                    // Collapse all nodes except root for cleaner view
+                    this.collapseAllNodesExceptRoot();
                 } else {
                     // Remove the selected node from parent's children
                     const parent = this.state.organization.get(parentId);
@@ -4576,6 +4636,9 @@
                         if (existingChildren.length > 0) {
                             this.reattachChildren(existingChildren, newNodeId);
                         }
+                        
+                        // Collapse the new subtree for cleaner view
+                        this.collapseSubtree(newNodeId, false);
                     }
                 }
                 

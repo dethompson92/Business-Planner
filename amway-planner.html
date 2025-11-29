@@ -131,6 +131,20 @@
             background: #f59e0b;
         }
         
+        .org-node-btn.view-income {
+            background: #10b981;
+        }
+        
+        .org-node-btn.view-income.active {
+            background: #fbbf24;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
         .org-node-btn:hover {
             transform: scale(1.15);
         }
@@ -602,6 +616,7 @@
                     organization: new Map(),
                     monthlyData: new Map(),
                     selectedNode: null,
+                    incomePerspectiveNode: 'root', // Which IBO's income we're viewing
                     currentMonth: new Date().toISOString().slice(0, 7),
                     currentTab: 'visual',
                     zoomLevel: 1,
@@ -919,9 +934,17 @@
                             
                             <!-- Income Summary -->
                             <div class="income-card">
-                                <h3 class="text-xl font-bold mb-4">
-                                    <i class="fas fa-dollar-sign mr-2"></i>Monthly Income
-                                </h3>
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-xl font-bold">
+                                        <i class="fas fa-dollar-sign mr-2"></i>Monthly Income
+                                    </h3>
+                                    <div id="income-perspective-indicator" class="text-xs bg-white bg-opacity-20 px-2 py-1 rounded"></div>
+                                </div>
+                                <div id="income-perspective-controls" class="hidden mb-3">
+                                    <button onclick="app.resetIncomePerspective()" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 py-2 rounded-lg transition-colors text-sm">
+                                        <i class="fas fa-user mr-2"></i>Back to Your Income
+                                    </button>
+                                </div>
                                 <div id="income-summary" class="space-y-2 text-sm"></div>
                                 <div class="mt-4 pt-4 border-t border-white border-opacity-30">
                                     <div class="flex justify-between items-center">
@@ -1178,6 +1201,22 @@
                     };
                     nodeDiv.appendChild(collapseBtn);
                 }
+                
+                // Add "View Income" button to top-left corner
+                const viewIncomeBtn = document.createElement('div');
+                viewIncomeBtn.className = 'org-node-btn view-income';
+                viewIncomeBtn.style.position = 'absolute';
+                viewIncomeBtn.style.top = '-10px';
+                viewIncomeBtn.style.left = '-10px';
+                viewIncomeBtn.style.zIndex = '30';
+                viewIncomeBtn.style.background = this.state.incomePerspectiveNode === node.id ? '#fbbf24' : '#10b981';
+                viewIncomeBtn.innerHTML = '<i class="fas fa-dollar-sign"></i>';
+                viewIncomeBtn.title = this.state.incomePerspectiveNode === node.id ? 'Currently viewing this income' : `View ${node.name}'s income`;
+                viewIncomeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.setIncomePerspective(node.id);
+                };
+                nodeDiv.appendChild(viewIncomeBtn);
                 
                 // Add button to bottom-right corner of circle
                 const addBtn = document.createElement('div');
@@ -1932,16 +1971,21 @@
              * - Differential Bonus: Difference between your % and downline's %
              * - Leadership Bonus: 6% on 25% legs, computed bottom-up
              * - Ruby Bonus: 2% of Ruby BV when Ruby PV ≥ 15,000
+             * 
+             * @param {string} perspectiveNodeId - Optional: View income from this IBO's perspective
              */
             
-            calculateIncome() {
-                const root = this.state.organization.get('root');
-                if (!root) {
+            calculateIncome(perspectiveNodeId = null) {
+                // Use the specified perspective node, or the current income perspective, or root
+                const nodeId = perspectiveNodeId || this.state.incomePerspectiveNode || 'root';
+                const perspectiveNode = this.state.organization.get(nodeId);
+                
+                if (!perspectiveNode) {
                     return this.getEmptyIncomeResult();
                 }
                 
-                // Calculate all the key metrics
-                const metrics = this.calculateAllMetrics(root);
+                // Calculate all the key metrics for this perspective
+                const metrics = this.calculateAllMetricsForNode(perspectiveNode);
                 
                 /**
                  * CORRECT AMWAY INCOME CALCULATION
@@ -1969,8 +2013,8 @@
                 // Paid on NON-qualified legs only (difference between your % and their %)
                 // For 25% legs, differential is 0% (25% - 25% = 0%), so no differential earned
                 let differentialBonus = 0;
-                if (root.children && root.children.length > 0) {
-                    root.children.forEach(childId => {
+                if (perspectiveNode.children && perspectiveNode.children.length > 0) {
+                    perspectiveNode.children.forEach(childId => {
                         const childGroupPV = this.calculateGroupPV(childId);
                         const childGroupBV = this.calculateGroupBV(childId);
                         const childRate = this.getPerformanceLevel(childGroupPV) / 100;
@@ -1990,7 +2034,7 @@
                 // Side Volume must be >= 2,500 PV to earn ANY Leadership Bonus
                 let leadershipBonus = 0;
                 if (performanceRate >= 0.25 && metrics.rubyPV >= 2500) {
-                    leadershipBonus = this.calculateLeadershipBonusAmount(root, metrics);
+                    leadershipBonus = this.calculateLeadershipBonusAmountForNode(perspectiveNode, metrics);
                 }
                 
                 // 4. RUBY BONUS (Core Plan)
@@ -2002,8 +2046,8 @@
                 
                 // 5. RETAIL MARGIN (Core Plan)
                 // 10% on YOUR personal retail sales only
-                const yourPersonalPV = root.pv || 0;
-                const yourPersonalBV = root.bv || (yourPersonalPV * this.config.pvToBvRatio);
+                const yourPersonalPV = perspectiveNode.pv || 0;
+                const yourPersonalBV = perspectiveNode.bv || (yourPersonalPV * this.config.pvToBvRatio);
                 const retailMargin = yourPersonalBV * 0.10;
                 
                 // 6. CUSTOMER SALES INCENTIVE (Core Plus)
@@ -2011,20 +2055,20 @@
                 let customerSalesIncentive = 0;
                 if (performanceRate <= 0.09) {
                     const csiRate = 0.10 - performanceRate;
-                    const vcsBV = (root.vcsPV || yourPersonalPV * 0.6) * this.config.pvToBvRatio;
+                    const vcsBV = (perspectiveNode.vcsPV || yourPersonalPV * 0.6) * this.config.pvToBvRatio;
                     customerSalesIncentive = Math.min(75, vcsBV * csiRate);
                 }
                 
                 // 7. DEPTH BONUS (Core Plan - Emerald+)
                 // 1% on qualified downlines starting from Level 2
                 // Requires 3+ qualified legs, with blocking logic
-                const depthBonus = this.calculateDepthBonusAmount(root);
+                const depthBonus = this.calculateDepthBonusAmountForNode(perspectiveNode);
                 
                 // Calculate potential Leadership Bonus (what you WOULD earn with full side volume)
                 // This is used for the warning display
                 let potentialLeadershipBonus = 0;
-                if (metrics.qualifiedLegs > 0) {
-                    root.children.forEach(childId => {
+                if (metrics.qualifiedLegs > 0 && perspectiveNode.children) {
+                    perspectiveNode.children.forEach(childId => {
                         const legPV = this.calculateGroupPV(childId);
                         const legBV = this.calculateGroupBV(childId);
                         if (legPV >= 7500) {
@@ -2060,21 +2104,30 @@
                     totalBV: metrics.groupBV,
                     rubyPV: metrics.rubyPV,
                     rubyBV: metrics.rubyBV,
-                    sidePV: this.calculateSidePV('root'),
-                    sideBV: this.calculateSideBV('root'),
+                    sidePV: this.calculateSidePVForNode(nodeId),
+                    sideBV: this.calculateSideBVForNode(nodeId),
                     personalPV: yourPersonalPV,
                     personalBV: yourPersonalBV,
                     qualifiedLegs: metrics.qualifiedLegs,
                     performanceLevel: performanceRate * 100,
                     vcsCompliantBV: metrics.vcsCompliantBV,
-                    potentialLeadershipBonus
+                    potentialLeadershipBonus,
+                    perspectiveNodeId: nodeId,
+                    perspectiveNodeName: perspectiveNode.name
                 };
             }
             
             /**
-             * Calculate all key metrics for the root IBO
+             * Calculate all key metrics for any IBO node (not just root)
              */
-            calculateAllMetrics(root) {
+            calculateAllMetricsForNode(node) {
+                return this.calculateAllMetrics(node);
+            }
+            
+            /**
+             * Calculate all key metrics for any IBO node
+             */
+            calculateAllMetrics(targetNode) {
                 let groupPV = 0;
                 let groupBV = 0;
                 let rubyPV = 0;
@@ -2083,23 +2136,23 @@
                 let qualifiedLegs = 0;
                 
                 // Personal volume always counts
-                const personalPV = root.pv || 0;
-                const personalBV = root.bv || (personalPV * this.config.pvToBvRatio);
+                const personalPV = targetNode.pv || 0;
+                const personalBV = targetNode.bv || (personalPV * this.config.pvToBvRatio);
                 
                 groupPV += personalPV;
                 groupBV += personalBV;
                 rubyPV += personalPV;
                 rubyBV += personalBV;
                 
-                // Check VCS compliance for root
-                const rootVCS = this.checkVCSCompliance(root);
-                if (rootVCS.compliant) {
+                // Check VCS compliance for this node
+                const nodeVCS = this.checkVCSCompliance(targetNode);
+                if (nodeVCS.compliant) {
                     vcsCompliantBV += personalBV;
                 }
                 
                 // Process each frontline leg
-                if (root.children && root.children.length > 0) {
-                    root.children.forEach(childId => {
+                if (targetNode.children && targetNode.children.length > 0) {
+                    targetNode.children.forEach(childId => {
                         const legPV = this.calculateGroupPV(childId);
                         const legBV = this.calculateGroupBV(childId);
                         const legPerformanceLevel = this.getPerformanceLevel(legPV);
@@ -2187,6 +2240,11 @@
                 }
                 return sidePV;
             }
+            
+            // Alias for perspective-based calculation
+            calculateSidePVForNode(nodeId) {
+                return this.calculateSidePV(nodeId);
+            }
 
             /**
              * Calculates Side BV (Ruby BV) - Payment currency for Side Volume
@@ -2209,6 +2267,11 @@
                     });
                 }
                 return sideBV;
+            }
+            
+            // Alias for perspective-based calculation
+            calculateSideBVForNode(nodeId) {
+                return this.calculateSideBV(nodeId);
             }
             
             /**
@@ -2239,10 +2302,10 @@
              * The "guaranteed minimum" ensures uplines receive at least:
              * 7,500 PV × ratio × 6% = $1,543 (approx) per qualified leg
              */
-            calculateLeadershipBonusAmount(root, metrics) {
+            calculateLeadershipBonusAmount(node, metrics) {
                 let leadershipBonus = 0;
                 
-                if (!root.children || root.children.length === 0) return 0;
+                if (!node.children || node.children.length === 0) return 0;
                 
                 const sidePV = metrics.rubyPV; // Ruby PV = Side Volume
                 const leadershipRate = 0.06; // 6%
@@ -2263,7 +2326,7 @@
                 }
                 
                 // Calculate 6% on each qualified leg
-                root.children.forEach(childId => {
+                node.children.forEach(childId => {
                     const legPV = this.calculateGroupPV(childId);
                     const legBV = this.calculateGroupBV(childId);
                     
@@ -2284,6 +2347,11 @@
                 leadershipBonus = Math.max(0, leadershipBonus - totalPassUpAdjustment);
                 
                 return leadershipBonus;
+            }
+            
+            // Alias for perspective-based calculation
+            calculateLeadershipBonusAmountForNode(node, metrics) {
+                return this.calculateLeadershipBonusAmount(node, metrics);
             }
             
             /**
@@ -2356,15 +2424,16 @@
              * - STOP when hitting a downline who also qualifies for Depth Bonus (3+ qualified legs)
              * - When blocked: You get 1% on the blocker + their frontline + their 2nd level, then STOP
              */
-            calculateDepthBonusAmount(root) {
+            calculateDepthBonusAmount(node) {
                 // Requires 3+ qualified legs to activate Depth Bonus
-                const qualifiedLegsCount = this.countQualifiedLegs('root');
+                const nodeId = node.id || 'root';
+                const qualifiedLegsCount = this.countQualifiedLegs(nodeId);
                 if (qualifiedLegsCount < 3) return 0;
                 
                 let depthBonus = 0;
                 
-                if (root.children) {
-                    root.children.forEach(childId => {
+                if (node.children) {
+                    node.children.forEach(childId => {
                         const legPV = this.calculateGroupPV(childId);
                         
                         // Only process qualified legs (7500+ PV)
@@ -2381,6 +2450,11 @@
                 }
                 
                 return depthBonus;
+            }
+            
+            // Alias for perspective-based calculation
+            calculateDepthBonusAmountForNode(node) {
+                return this.calculateDepthBonusAmount(node);
             }
             
             /**
@@ -3244,6 +3318,9 @@
                 if (totalDiv) {
                     totalDiv.textContent = '$' + income.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 }
+                
+                // Update perspective indicator
+                this.updateIncomePerspectiveIndicator();
             }
             
             updateTeamStats() {
@@ -3420,6 +3497,55 @@
                 this.updateIncomeSummary();
                 this.updateTeamStats();
                 this.resetPan();
+            }
+            
+            // ============================================
+            // INCOME PERSPECTIVE CONTROLS
+            // ============================================
+            
+            /**
+             * Switch income view to show from a specific IBO's perspective
+             */
+            setIncomePerspective(nodeId) {
+                const node = this.state.organization.get(nodeId);
+                if (!node) {
+                    console.warn('Node not found for perspective:', nodeId);
+                    return;
+                }
+                
+                this.state.incomePerspectiveNode = nodeId;
+                this.renderOrganizationChart(); // Re-render to update button highlights
+                this.updateIncomeSummary();
+                this.updateIncomePerspectiveIndicator();
+            }
+            
+            /**
+             * Reset income view back to your (root) perspective
+             */
+            resetIncomePerspective() {
+                this.state.incomePerspectiveNode = 'root';
+                this.renderOrganizationChart(); // Re-render to update button highlights
+                this.updateIncomeSummary();
+                this.updateIncomePerspectiveIndicator();
+            }
+            
+            /**
+             * Update the income perspective indicator in the UI
+             */
+            updateIncomePerspectiveIndicator() {
+                const indicator = document.getElementById('income-perspective-indicator');
+                const controls = document.getElementById('income-perspective-controls');
+                const perspectiveNode = this.state.organization.get(this.state.incomePerspectiveNode);
+                
+                if (indicator && perspectiveNode) {
+                    const isRoot = this.state.incomePerspectiveNode === 'root';
+                    indicator.textContent = isRoot ? 'Your Income' : `Viewing: ${perspectiveNode.name}`;
+                    indicator.className = `text-xs px-2 py-1 rounded ${isRoot ? 'bg-white bg-opacity-20' : 'bg-yellow-400 text-yellow-900 font-bold'}`;
+                }
+                
+                if (controls) {
+                    controls.className = this.state.incomePerspectiveNode === 'root' ? 'hidden mb-3' : 'mb-3';
+                }
             }
             
             attachVisualBuilderEvents() {
